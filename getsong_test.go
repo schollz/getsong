@@ -14,7 +14,7 @@ func TestGetSong(t *testing.T) {
 	Debug(true)
 	OptionShowProgressBar = true
 
-	id, err := GetMusicVideoIDs("transmission listen helado negro", 224)
+	id, err := GetMusicVideoID("transmission listen helado negro", 224)
 	assert.Nil(t, err)
 	assert.Equal(t, "JkIM2xp65B8", id)
 	fname, err := DownloadYouTube(id, "Helado Negro - Transmission")
@@ -28,7 +28,7 @@ func TestGetFfmpeg(t *testing.T) {
 	Debug(true)
 	OptionShowProgressBar = true
 
-	locationToBinary, err := GetFfmpegBinary()
+	locationToBinary, err := getFfmpegBinary()
 	fmt.Println(locationToBinary)
 	assert.NotEqual(t, "", locationToBinary)
 	assert.Nil(t, err)

@@ -23,24 +23,23 @@ import (
 )
 
 var ffmpegBinary string
-var OptionDebug bool
 var OptionShowProgressBar bool
 
 func init() {
 	var err error
-	ffmpegBinary, err = GetFfmpegBinary()
+	ffmpegBinary, err = getFfmpegBinary()
 	if err != nil {
 		panic(err)
 	}
 }
 
+// Debug will turn on the verbose logging
 func Debug(on bool) {
 	if on {
 		setLogLevel("debug")
 	} else {
 		setLogLevel("info")
 	}
-	OptionDebug = on
 }
 
 // setLogLevel determines the log level
@@ -160,8 +159,8 @@ func DownloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	return
 }
 
-// GetMusicVideoIDs returns the ids for a specified title and artist
-func GetMusicVideoIDs(titleAndArtist string, expectedDuration ...int) (id string, err error) {
+// GetMusicVideoID returns the ids for a specified title and artist
+func GetMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string, err error) {
 	youtubeSearchURL := fmt.Sprintf(
 		`https://www.youtube.com/results?search_query="Provided+to+YouTube"+%s`,
 		strings.Join(strings.Fields(titleAndArtist), "+"),
@@ -255,7 +254,7 @@ func userHomeDir() string {
 	return os.Getenv("HOME")
 }
 
-func GetFfmpegBinary() (locationToBinary string, err error) {
+func getFfmpegBinary() (locationToBinary string, err error) {
 	startTime := time.Now()
 	defer func() {
 		log.Debugf("time taken: %s", time.Since(startTime))
