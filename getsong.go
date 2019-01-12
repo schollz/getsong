@@ -26,6 +26,7 @@ var ffmpegBinary string
 var OptionShowProgressBar bool
 
 func init() {
+	setLogLevel("info")
 	var err error
 	ffmpegBinary, err = getFfmpegBinary()
 	if err != nil {
@@ -84,6 +85,9 @@ func ConvertToMp3(filename string) (err error) {
 	// convert to mp3
 	cmd := exec.Command(ffmpegBinary, "-i", filename, "-y", filenameWithoutExtension+".mp3")
 	_, err = cmd.CombinedOutput()
+	if err == nil {
+		os.Remove(filename)
+	}
 	return
 }
 
