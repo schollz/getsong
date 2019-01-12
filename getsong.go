@@ -24,14 +24,6 @@ func init() {
 
 }
 
-func CheckFfmpeg() {
-	cmd := exec.Command("ffmpegg", "-help")
-	output, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(output), "ffmpeg version") {
-		fmt.Println("download?")
-	}
-}
-
 // SetLogLevel determines the log level
 func SetLogLevel(level string) (err error) {
 	// https://github.com/cihub/seelog/wiki/Log-levels
