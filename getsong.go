@@ -1,6 +1,7 @@
 package getsong
 
 import (
+	"archive/zip"
 	"bufio"
 	"fmt"
 	"io"
@@ -8,8 +9,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +22,17 @@ import (
 	"github.com/otium/ytdl"
 )
 
+var ffmpegBinary string
+var ShowProgressBar bool
+
 func init() {
 	SetLogLevel("info")
 
+	var err error
+	ffmpegBinary, err = GetFfmpegBinary()
+	if err != nil {
+		panic(err)
+	}
 }
 
 // SetLogLevel determines the log level
@@ -64,7 +75,7 @@ func SetLogLevel(level string) (err error) {
 func ConvertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.TrimRight(filename, filepath.Ext(filename))
 	// convert to mp3
-	cmd := exec.Command("ffmpeg", "-i", filename, "-y", filenameWithoutExtension+".mp3")
+	cmd := exec.Command(ffmpegBinary, "-i", filename, "-y", filenameWithoutExtension+".mp3")
 	_, err = cmd.CombinedOutput()
 	return
 }
@@ -121,16 +132,19 @@ func DownloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	}
 	defer resp.Body.Close()
 
-	progressBar := pb.New64(resp.ContentLength)
-	progressBar.SetUnits(pb.U_BYTES)
-	progressBar.ShowTimeLeft = true
-	progressBar.ShowSpeed = true
-	progressBar.RefreshRate = 1 * time.Second
-	progressBar.Output = os.Stderr
-	progressBar.Start()
-	defer progressBar.Finish()
-	out = io.MultiWriter(out, progressBar)
+	if ShowProgressBar {
+		progressBar := pb.New64(resp.ContentLength)
+		progressBar.SetUnits(pb.U_BYTES)
+		progressBar.ShowTimeLeft = true
+		progressBar.ShowSpeed = true
+		progressBar.RefreshRate = 1 * time.Second
+		progressBar.Output = os.Stderr
+		progressBar.Start()
+		defer progressBar.Finish()
+		out = io.MultiWriter(out, progressBar)
+	}
 	_, err = io.Copy(out, resp.Body)
+	saveFile.Close()
 	if err != nil {
 		return
 	}
@@ -220,4 +234,163 @@ func sanitizeFileNamePart(part string) string {
 	part = strings.Replace(part, "/", "-", -1)
 	part = illegalFileNameCharacters.ReplaceAllString(part, "")
 	return part
+}
+
+func userHomeDir() string {
+	if runtime.GOOS == "windows" {
+		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+		if home == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+		return home
+	}
+	return os.Getenv("HOME")
+}
+
+func GetFfmpegBinary() (locationToBinary string, err error) {
+	startTime := time.Now()
+	defer func() {
+		log.Debugf("time taken: %s", time.Since(startTime))
+	}()
+	cmd := exec.Command("ffmpeg", "-version")
+	ffmpegOutput, errffmpeg := cmd.CombinedOutput()
+	if errffmpeg == nil && strings.Contains(string(ffmpegOutput), "ffmpeg version") {
+		locationToBinary = "ffmpeg"
+		return
+	}
+
+	// if ffmpeg doesn't exist, then create it
+	ffmpegFolder := path.Join(userHomeDir(), ".getsong")
+	os.MkdirAll(ffmpegFolder, 0644)
+
+	err = filepath.Walk(ffmpegFolder,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			_, fname := filepath.Split(path)
+			fname = strings.TrimRight(fname, filepath.Ext(fname))
+			if fname == "ffmpeg" && (filepath.Ext(path) == ".exe" || filepath.Ext(path) == "") {
+				locationToBinary = path
+			}
+			return nil
+		})
+	if err != nil {
+		return
+	}
+	if locationToBinary != "" {
+		return
+	}
+
+	urlToDownload := ""
+	if runtime.GOOS == "windows" {
+		urlToDownload = "https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-4.1-win64-static.zip"
+	} else {
+		panic("os not supported")
+	}
+
+	var out io.Writer
+	saveFile, err := os.Create(path.Join(ffmpegFolder, "ffmpeg.zip"))
+	if err != nil {
+		return
+	}
+	out = saveFile
+
+	var req *http.Request
+	req, err = http.NewRequest("GET", urlToDownload, nil)
+	if err != nil {
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if err == nil {
+			err = fmt.Errorf("Received status code %d from download url", resp.StatusCode)
+		}
+		err = fmt.Errorf("Unable to start download: %s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("Downloading ffmpeg...")
+	progressBar := pb.New64(resp.ContentLength)
+	progressBar.SetUnits(pb.U_BYTES)
+	progressBar.ShowTimeLeft = true
+	progressBar.ShowSpeed = true
+	progressBar.RefreshRate = 1 * time.Second
+	progressBar.Output = os.Stderr
+	progressBar.Start()
+	defer progressBar.Finish()
+	out = io.MultiWriter(out, progressBar)
+	_, err = io.Copy(out, resp.Body)
+	saveFile.Close()
+	if err != nil {
+		return
+	}
+
+	_, err = unzip(path.Join(ffmpegFolder, "ffmpeg.zip"), ffmpegFolder)
+	if err == nil {
+		os.Remove(path.Join(ffmpegFolder, "ffmpeg.zip"))
+	}
+	return
+}
+
+// unzip will decompress a zip archive, moving all files and folders
+// within the zip file (parameter 1) to an output directory (parameter 2).
+func unzip(src string, dest string) ([]string, error) {
+
+	var filenames []string
+
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return filenames, err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+
+		rc, err := f.Open()
+		if err != nil {
+			return filenames, err
+		}
+		defer rc.Close()
+
+		// Store filename/path for returning and using later on
+		fpath := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return filenames, fmt.Errorf("%s: illegal file path", fpath)
+		}
+
+		filenames = append(filenames, fpath)
+
+		if f.FileInfo().IsDir() {
+
+			// Make Folder
+			os.MkdirAll(fpath, os.ModePerm)
+
+		} else {
+
+			// Make File
+			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+				return filenames, err
+			}
+
+			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return filenames, err
+			}
+
+			_, err = io.Copy(outFile, rc)
+
+			// Close the file without defer to close before next iteration of loop
+			outFile.Close()
+
+			if err != nil {
+				return filenames, err
+			}
+
+		}
+	}
+	return filenames, nil
 }

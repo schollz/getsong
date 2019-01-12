@@ -1,9 +1,11 @@
 package getsong
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
+	log "github.com/cihub/seelog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,4 +19,14 @@ func TestGetSong(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, ConvertToMp3(fname))
 	os.Remove(fname)
+}
+
+func TestGetFfmpeg(t *testing.T) {
+	defer log.Flush()
+	SetLogLevel("debug")
+
+	locationToBinary, err := GetFfmpegBinary()
+	fmt.Println(locationToBinary)
+	assert.NotEqual(t, "", locationToBinary)
+	assert.Nil(t, err)
 }
