@@ -21,6 +21,15 @@ import (
 
 func init() {
 	SetLogLevel("info")
+
+}
+
+func CheckFfmpeg() {
+	cmd := exec.Command("ffmpegg", "-help")
+	output, err := cmd.CombinedOutput()
+	if err != nil || !strings.Contains(string(output), "ffmpeg version") {
+		fmt.Println("download?")
+	}
 }
 
 // SetLogLevel determines the log level

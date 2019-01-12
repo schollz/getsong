@@ -18,3 +18,7 @@ func TestGetSong(t *testing.T) {
 	assert.Nil(t, ConvertToMp3(fname))
 	os.Remove(fname)
 }
+
+func TestFfmpeg(t *testing.T) {
+	CheckFfmpeg()
+}
