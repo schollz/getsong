@@ -17,17 +17,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cheggaaa/pb"
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 var ffmpegBinary string
-var ShowProgressBar bool
+var OptionDebug bool
+var OptionShowProgressBar bool
 
 func init() {
-	SetLogLevel("info")
-
 	var err error
 	ffmpegBinary, err = GetFfmpegBinary()
 	if err != nil {
@@ -35,8 +34,17 @@ func init() {
 	}
 }
 
-// SetLogLevel determines the log level
-func SetLogLevel(level string) (err error) {
+func Debug(on bool) {
+	if on {
+		setLogLevel("debug")
+	} else {
+		setLogLevel("info")
+	}
+	OptionDebug = on
+}
+
+// setLogLevel determines the log level
+func setLogLevel(level string) (err error) {
 	// https://github.com/cihub/seelog/wiki/Log-levels
 	appConfig := `
 	<seelog minlevel="` + level + `">
@@ -132,7 +140,7 @@ func DownloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	}
 	defer resp.Body.Close()
 
-	if ShowProgressBar {
+	if OptionShowProgressBar {
 		progressBar := pb.New64(resp.ContentLength)
 		progressBar.SetUnits(pb.U_BYTES)
 		progressBar.ShowTimeLeft = true

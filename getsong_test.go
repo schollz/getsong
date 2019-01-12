@@ -10,7 +10,9 @@ import (
 )
 
 func TestGetSong(t *testing.T) {
-	SetLogLevel("debug")
+	defer log.Flush()
+	Debug(true)
+	OptionShowProgressBar = true
 
 	id, err := GetMusicVideoIDs("transmission listen helado negro", 224)
 	assert.Nil(t, err)
@@ -23,7 +25,8 @@ func TestGetSong(t *testing.T) {
 
 func TestGetFfmpeg(t *testing.T) {
 	defer log.Flush()
-	SetLogLevel("debug")
+	Debug(true)
+	OptionShowProgressBar = true
 
 	locationToBinary, err := GetFfmpegBinary()
 	fmt.Println(locationToBinary)
