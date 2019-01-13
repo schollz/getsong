@@ -35,6 +35,8 @@ func init() {
 	}
 }
 
+// Options allow you to set the artist, title and duration to find the right song.
+// You can also set the progress and debugging for the program execution.
 type Options struct {
 	Title        string
 	Artist       string
@@ -43,6 +45,10 @@ type Options struct {
 	Debug        bool
 }
 
+// GetSong requires passing in the options which requires at least a title.
+// If an Artist is provided, it will save it as Artist - Title.mp3
+// You can also pass in a duration, and it will try to find a video that
+// is within 10 seconds of that duration.
 func GetSong(options Options) (savedFilename string, err error) {
 	if options.Debug {
 		setLogLevel("debug")
