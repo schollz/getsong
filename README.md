@@ -19,7 +19,8 @@ go get -u github.com/schollz/getsong/...
 
 ```bash
 $ getsong 'Getting in Tune by The Who'
-
+ 4.72 MiB / 4.72 MiB [==========================] 100.00% 37.97 KiB/s 2m7s
+Downloaded 'Getting in Tune by The Who.mp3'
 ```
 
 ### Use as a library
