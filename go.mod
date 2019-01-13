@@ -8,6 +8,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1
 	github.com/mattn/go-runewidth v0.0.4
 	github.com/otium/ytdl v0.0.0-20181217105247-44fe64bba886
+	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/sirupsen/logrus v1.3.0
 	github.com/stretchr/testify v1.3.0

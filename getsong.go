@@ -19,11 +19,12 @@ import (
 
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
+	"github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
 var ffmpegBinary string
-var OptionShowProgressBar bool
+var optionShowProgressBar bool
 
 func init() {
 	setLogLevel("info")
@@ -34,13 +35,62 @@ func init() {
 	}
 }
 
-// Debug will turn on the verbose logging
-func Debug(on bool) {
-	if on {
+type Options struct {
+	Title        string
+	Artist       string
+	Duration     int
+	ShowProgress bool
+	Debug        bool
+}
+
+func GetSong(options Options) (savedFilename string, err error) {
+	if options.Debug {
 		setLogLevel("debug")
 	} else {
 		setLogLevel("info")
 	}
+	optionShowProgressBar = options.ShowProgress
+
+	if options.Title == "" {
+		err = fmt.Errorf("must enter title")
+		return
+	}
+
+	searchTerm := options.Title
+	if options.Artist != "" {
+		searchTerm += " " + options.Artist
+		savedFilename = options.Artist
+	}
+	if savedFilename != "" {
+		savedFilename += " - "
+	}
+	savedFilename += options.Title
+
+	var youtubeID string
+	if options.Duration > 0 {
+		youtubeID, err = getMusicVideoID(searchTerm, 224)
+	} else {
+		youtubeID, err = getMusicVideoID(searchTerm)
+	}
+	if err != nil {
+		err = errors.Wrap(err, "could not get youtube ID")
+		return
+	}
+
+	fname, err := downloadYouTube(youtubeID, savedFilename)
+	if err != nil {
+		err = errors.Wrap(err, "could not downlaod video")
+		return
+	}
+
+	err = convertToMp3(fname)
+	if err != nil {
+		err = errors.Wrap(err, "could not convert video")
+		return
+	}
+
+	savedFilename += ".mp3"
+	return
 }
 
 // setLogLevel determines the log level
@@ -79,8 +129,8 @@ func setLogLevel(level string) (err error) {
 	return
 }
 
-// ConvertToMp3 uses ffmpeg to convert to mp3
-func ConvertToMp3(filename string) (err error) {
+// convertToMp3 uses ffmpeg to convert to mp3
+func convertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.TrimRight(filename, filepath.Ext(filename))
 	// convert to mp3
 	cmd := exec.Command(ffmpegBinary, "-i", filename, "-y", filenameWithoutExtension+".mp3")
@@ -91,8 +141,8 @@ func ConvertToMp3(filename string) (err error) {
 	return
 }
 
-// DownloadYouTube downloads a youtube video and saves using the filename. Returns the filename with the extension.
-func DownloadYouTube(youtubeID string, filename string) (downloadedFilename string, err error) {
+// downloadYouTube downloads a youtube video and saves using the filename. Returns the filename with the extension.
+func downloadYouTube(youtubeID string, filename string) (downloadedFilename string, err error) {
 	info, err := ytdl.GetVideoInfo(youtubeID)
 	if err != nil {
 		err = fmt.Errorf("Unable to fetch video info: %s", err.Error())
@@ -143,7 +193,7 @@ func DownloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	}
 	defer resp.Body.Close()
 
-	if OptionShowProgressBar {
+	if optionShowProgressBar {
 		progressBar := pb.New64(resp.ContentLength)
 		progressBar.SetUnits(pb.U_BYTES)
 		progressBar.ShowTimeLeft = true
@@ -163,8 +213,8 @@ func DownloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	return
 }
 
-// GetMusicVideoID returns the ids for a specified title and artist
-func GetMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string, err error) {
+// getMusicVideoID returns the ids for a specified title and artist
+func getMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string, err error) {
 	youtubeSearchURL := fmt.Sprintf(
 		`https://www.youtube.com/results?search_query="Provided+to+YouTube"+%s`,
 		strings.Join(strings.Fields(titleAndArtist), "+"),

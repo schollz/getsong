@@ -10,23 +10,27 @@ This is a simple library that utilizes the [rylio/ytdl YouTube downloaded](https
 ## Install
 
 ```
-go get -u github.com/schollz/getsong
+go get -u github.com/schollz/getsong/...
 ```
 
 ## Usage 
 
+### Use as a program
+
+```bash
+$ getsong 'Getting in Tune by The Who'
+
+```
+
+### Use as a library
 
 ```golang
-package main
-
-import "github.com/schollz/getsong"
-
-func main() {
-	getsong.OptionShowProgressBar = true
-	songName := "Old Records by Allen Toussaint"
-	id, _ := getsong.GetMusicVideoID(songName)
-	fname, _ := getsong.DownloadYouTube(id, songName)
-	getsong.ConvertToMp3(fname)
+fname, err := getsong.GetSong(getsong.Options{
+    Title:        "True",
+    Artist:       "Spandau Ballet",
+})
+if err == nil {
+    fmt.Printf("Downloaded '%s'\n", fname)
 }
 ```
 
