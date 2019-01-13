@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xrash/smetrics"
+
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
 	"github.com/pkg/errors"
@@ -74,9 +76,9 @@ func GetSong(options Options) (savedFilename string, err error) {
 
 	var youtubeID string
 	if options.Duration > 0 {
-		youtubeID, err = getMusicVideoID(searchTerm, 224)
+		youtubeID, err = getMusicVideoID(options.Title, searchTerm, 224)
 	} else {
-		youtubeID, err = getMusicVideoID(searchTerm)
+		youtubeID, err = getMusicVideoID(options.Title, searchTerm)
 	}
 	if err != nil {
 		err = errors.Wrap(err, "could not get youtube ID")
@@ -220,7 +222,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 }
 
 // getMusicVideoID returns the ids for a specified title and artist
-func getMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string, err error) {
+func getMusicVideoID(title string, titleAndArtist string, expectedDuration ...int) (id string, err error) {
 	youtubeSearchURL := fmt.Sprintf(
 		`https://www.youtube.com/results?search_query="Provided+to+YouTube"+%s`,
 		strings.Join(strings.Fields(titleAndArtist), "+"),
@@ -244,6 +246,11 @@ func getMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string,
 	// do this now so it won't be forgotten
 	defer resp.Body.Close()
 	// reads html as a slice of bytes
+	type Track struct {
+		Title string
+		ID    string
+	}
+	possibleTracks := []Track{}
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -276,11 +283,27 @@ func getMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string,
 				continue
 			}
 		}
-		log.Debugf("Best match: %s (%s): %ds", youtubeTitle, youtubeID, youtubeDuration)
+		log.Debugf("Possible track: %s (%s): %ds", youtubeTitle, youtubeID, youtubeDuration)
+		possibleTracks = append(possibleTracks, Track{youtubeTitle, youtubeID})
 		id = youtubeID
+	}
+	if len(possibleTracks) == 0 {
+		err = fmt.Errorf("could not find any videos that matched")
 		return
 	}
-	err = fmt.Errorf("could not find any videos that matched")
+
+	bestMetric := 0.0
+	bestTrack := 0
+	for i := len(possibleTracks) - 1; i >= 0; i-- {
+		metric := smetrics.JaroWinkler(title, possibleTracks[i].Title, 0.7, 4)
+		log.Debugf("%s | %s : %2.3f", title, possibleTracks[i].Title, metric)
+		if metric > bestMetric {
+			bestMetric = metric
+			bestTrack = i
+		}
+	}
+	id = possibleTracks[bestTrack].ID
+	log.Debugf("Best track for %s: %s (%s)", titleAndArtist, possibleTracks[bestTrack].Title, possibleTracks[bestTrack].ID)
 	return
 }
 

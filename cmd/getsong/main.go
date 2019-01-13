@@ -11,6 +11,7 @@ func main() {
 	fname, err := getsong.GetSong(getsong.Options{
 		Title:        os.Args[1],
 		ShowProgress: true,
+		Debug:        true,
 	})
 	if err == nil {
 		fmt.Printf("Downloaded '%s'\n", fname)
