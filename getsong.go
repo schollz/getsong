@@ -40,11 +40,12 @@ func init() {
 // Options allow you to set the artist, title and duration to find the right song.
 // You can also set the progress and debugging for the program execution.
 type Options struct {
-	Title        string
-	Artist       string
-	Duration     int
-	ShowProgress bool
-	Debug        bool
+	Title         string
+	Artist        string
+	Duration      int
+	ShowProgress  bool
+	Debug         bool
+	DoNotDownload bool
 }
 
 // GetSong requires passing in the options which requires at least a title.
@@ -85,16 +86,19 @@ func GetSong(options Options) (savedFilename string, err error) {
 		return
 	}
 
-	fname, err := downloadYouTube(youtubeID, savedFilename)
-	if err != nil {
-		err = errors.Wrap(err, "could not downlaod video")
-		return
-	}
+	if !options.DoNotDownload {
+		var fname string
+		fname, err = downloadYouTube(youtubeID, savedFilename)
+		if err != nil {
+			err = errors.Wrap(err, "could not downlaod video")
+			return
+		}
 
-	err = convertToMp3(fname)
-	if err != nil {
-		err = errors.Wrap(err, "could not convert video")
-		return
+		err = convertToMp3(fname)
+		if err != nil {
+			err = errors.Wrap(err, "could not convert video")
+			return
+		}
 	}
 
 	savedFilename += ".mp3"
@@ -296,6 +300,10 @@ func getMusicVideoID(title string, titleAndArtist string, expectedDuration ...in
 	bestTrack := 0
 	for i := len(possibleTracks) - 1; i >= 0; i-- {
 		metric := smetrics.JaroWinkler(title, possibleTracks[i].Title, 0.7, 4)
+		metric2 := smetrics.JaroWinkler(titleAndArtist, possibleTracks[i].Title, 0.7, 4)
+		if metric2 > metric {
+			metric = metric2
+		}
 		log.Debugf("%s | %s : %2.3f", title, possibleTracks[i].Title, metric)
 		if metric > bestMetric {
 			bestMetric = metric
