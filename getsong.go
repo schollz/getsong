@@ -271,12 +271,12 @@ func getMusicVideoID(titleAndArtist string, expectedDuration ...int) (id string,
 		youtubeTitle := getStringInBetween(line, `title="`, `"`)
 		youtubeDuration := minutes*60 + seconds
 		if len(expectedDuration) > 0 {
-			if math.Abs(float64(expectedDuration[0]-youtubeDuration)) > 10 {
+			if math.Abs(float64(expectedDuration[0]-youtubeDuration)) > 20 {
 				log.Debugf("'%s' duration (%ds) is different than expected (%ds)", youtubeTitle, youtubeDuration, expectedDuration[0])
 				continue
 			}
 		}
-		log.Debugf("%s (%s): %ds", youtubeTitle, youtubeID, youtubeDuration)
+		log.Debugf("Best match: %s (%s): %ds", youtubeTitle, youtubeID, youtubeDuration)
 		id = youtubeID
 		return
 	}
