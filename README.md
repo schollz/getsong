@@ -7,6 +7,8 @@
 
 This is a simple library that utilizes the [rylio/ytdl YouTube downloader](https://github.com/rylio/ytdl) and [ffmpeg](https://www.ffmpeg.org/) to get almost any mp3 of a song that you want to listen to. I wrote this so I could [download mp3s of my favorite Spotify playlists](https://github.com/schollz/spotifydownload).
 
+## This currently is under development (so it may or may not work yet)!
+
 ## Install
 
 ```
