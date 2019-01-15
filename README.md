@@ -51,6 +51,7 @@ Pull requests are welcome. Feel free to...
 - [ ] Update readme with new program structure
 - [ ] When saving file, put the youtube ID: Artist - Title (ID).mp3
 - [ ] Add makefile for simpler travis testing
+- [ ] Fall back on getrenderedpage.schollz.com if node is not installed
 
 ## License
 
