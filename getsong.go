@@ -531,7 +531,7 @@ func getRenderedPage(urlToGet string) (html string, err error) {
 }
 
 func getRenderedPageUsingServer(urlToGet string) (html string, err error) {
-	log.Debug("gettng renderd page from server")
+	log.Debug("getting rendered page from server")
 	var client http.Client
 	resp, err := client.Get("https://getrenderedpage.schollz.com/" + urlToGet)
 	if err != nil {
