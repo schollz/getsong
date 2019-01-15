@@ -2,7 +2,6 @@ package getsong
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -18,18 +17,6 @@ func TestGetSongAPI(t *testing.T) {
 		Debug:        true,
 	})
 	assert.Nil(t, err)
-}
-func TestGetSong(t *testing.T) {
-	defer log.Flush()
-	optionShowProgressBar = true
-
-	id, err := getMusicVideoID("transmission listen", "helado negro", 224)
-	assert.Nil(t, err)
-	assert.Equal(t, "JkIM2xp65B8", id)
-	fname, err := downloadYouTube(id, "Helado Negro - Transmission")
-	assert.Nil(t, err)
-	assert.Nil(t, convertToMp3(fname))
-	os.Remove(fname)
 }
 
 func TestGetFfmpeg(t *testing.T) {
@@ -53,9 +40,17 @@ func TestGetYouTubeInfo(t *testing.T) {
 func TestGetMusicVideoID(t *testing.T) {
 	defer log.Flush()
 	setLogLevel("debug")
+
+	// this one is tricky because the band name is spelled weird and requires
+	// clicking through to force youtube to search the wrong spelling
 	id, err := getMusicVideoID("eva", "haerts")
 	assert.Nil(t, err)
 	assert.Equal(t, "qxiOMm_x3Xg", id)
+
+	// this one is trick because its the second result
+	id, err = getMusicVideoID("old records", "allen toussaint")
+	assert.Nil(t, err)
+	assert.Equal(t, "o3HtZ4qIkaI", id)
 }
 
 func TestGetRenderedPage(t *testing.T) {
