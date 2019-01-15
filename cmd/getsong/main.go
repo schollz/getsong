@@ -16,9 +16,7 @@ getsong 'title of song' 'artist of song'
 `)
 		os.Exit(1)
 	}
-	fname, err := getsong.GetSong(getsong.Options{
-		Title:        os.Args[1],
-		Artist:       os.Args[2],
+	fname, err := getsong.GetSong(os.Args[1], os.Args[2], getsong.Options{
 		ShowProgress: true,
 		Debug:        true,
 	})
