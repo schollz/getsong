@@ -7,8 +7,6 @@
 
 This is a simple library that utilizes the [rylio/ytdl YouTube downloader](https://github.com/rylio/ytdl) and [ffmpeg](https://www.ffmpeg.org/) to get almost any mp3 of a song that you want to listen to. I wrote this so I could [download mp3s of my favorite Spotify playlists](https://github.com/schollz/spotifydownload).
 
-## This currently is under development (so it may or may not work yet)!
-
 ## Install
 
 ```
@@ -28,9 +26,8 @@ Downloaded 'Getting in Tune by The Who (W6-3rnD7FSc).mp3'
 ### Use as a library
 
 ```golang
-fname, err := getsong.GetSong("True", "Spandau Ballet", getsong.Options{
-    ShowProgress: true,
-})
+// download "True" by "Spandau Ballet"
+fname, err := getsong.GetSong("True", "Spandau Ballet")
 if err == nil {
     fmt.Printf("Downloaded '%s'\n", fname)
 }
@@ -44,14 +41,6 @@ Pull requests are welcome. Feel free to...
 - Add new features
 - Fix bugs
 - Suggest improvements
-
-## Todo
-
-- [ ] Update readme with new program structure
-- [x] When saving file, put the youtube ID: Artist - Title (ID).mp3
-- [ ] Add makefile for simpler travis testing
-- [x] Fall back on getrenderedpage.schollz.com if node is not installed
-- [ ] Add workers to get all the possible ids simultaneously
 
 ## License
 
