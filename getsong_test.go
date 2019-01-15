@@ -24,7 +24,7 @@ func TestGetPage(t *testing.T) {
 	setLogLevel("debug")
 	html, err := getPage("https://www.youtube.com/watch?v=qxiOMm_x3Xg")
 	assert.Nil(t, err)
-	fmt.Println(html)
+	assert.True(t, strings.Contains(html, "<html"))
 }
 func TestGetFfmpeg(t *testing.T) {
 	defer log.Flush()
