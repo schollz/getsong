@@ -2,10 +2,9 @@ package getsong
 
 import (
 	"archive/zip"
-	"bufio"
 	"fmt"
 	"io"
-	"math"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,11 +12,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/xrash/smetrics"
 
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
@@ -65,9 +61,7 @@ func GetSong(options Options) (savedFilename string, err error) {
 		return
 	}
 
-	searchTerm := options.Title
 	if options.Artist != "" {
-		searchTerm += " " + options.Artist
 		savedFilename = options.Artist
 	}
 	if savedFilename != "" {
@@ -77,9 +71,9 @@ func GetSong(options Options) (savedFilename string, err error) {
 
 	var youtubeID string
 	if options.Duration > 0 {
-		youtubeID, err = getMusicVideoID(options.Title, searchTerm, 224)
+		youtubeID, err = getMusicVideoID(options.Title, options.Artist, 224)
 	} else {
-		youtubeID, err = getMusicVideoID(options.Title, searchTerm)
+		youtubeID, err = getMusicVideoID(options.Title, options.Artist)
 	}
 	if err != nil {
 		err = errors.Wrap(err, "could not get youtube ID")
@@ -226,92 +220,73 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 }
 
 // getMusicVideoID returns the ids for a specified title and artist
-func getMusicVideoID(title string, titleAndArtist string, expectedDuration ...int) (id string, err error) {
+func getMusicVideoID(title string, artist string, expectedDuration ...int) (id string, err error) {
+	searchTerm := strings.ToLower(strings.TrimSpace(title + " " + artist))
 	youtubeSearchURL := fmt.Sprintf(
-		`https://www.youtube.com/results?search_query="Provided+to+YouTube"+%s`,
-		strings.Join(strings.Fields(titleAndArtist), "+"),
+		`https://www.youtube.com/results?search_query=%s`,
+		strings.Join(strings.Fields(searchTerm), "+"),
 	)
 	log.Debugf("searching url: %s", youtubeSearchURL)
 
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", youtubeSearchURL, nil)
+	html, err := getRenderedPage(youtubeSearchURL)
 	if err != nil {
-		log.Error(err)
 		return
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	// do this now so it won't be forgotten
-	defer resp.Body.Close()
-	// reads html as a slice of bytes
 	type Track struct {
 		Title string
 		ID    string
 	}
-	possibleTracks := []Track{}
-	scanner := bufio.NewScanner(resp.Body)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if !strings.Contains(line, "Provided to YouTube") {
-			continue
-		}
-		if !strings.Contains(line, "yt-lockup-title") {
-			continue
-		}
-		durationParts := strings.Split(getStringInBetween(line, "Duration: ", "."), ":")
-		if len(durationParts) != 2 {
-			continue
-		}
-		minutes, errExtract := strconv.Atoi(durationParts[0])
-		if errExtract != nil {
-			log.Error(errExtract)
-			continue
-		}
-		seconds, errExtract := strconv.Atoi(durationParts[1])
-		if errExtract != nil {
-			log.Error(errExtract)
-			continue
-		}
-		youtubeID := getStringInBetween(line, `/watch?v=`, `"`)
-		youtubeTitle := getStringInBetween(line, `title="`, `"`)
-		youtubeDuration := minutes*60 + seconds
-		if len(expectedDuration) > 0 {
-			if math.Abs(float64(expectedDuration[0]-youtubeDuration)) > 20 {
-				log.Debugf("'%s' duration (%ds) is different than expected (%ds)", youtubeTitle, youtubeDuration, expectedDuration[0])
-				continue
+
+	for _, line := range strings.Split(html, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, `yt-search-query-correction`) && strings.Contains(line, `/results?`) && strings.Contains(line, `sp=`) {
+			youtubeSearchURL = "https://www.youtube.com" + getStringInBetween(line, `href="`, `"`)
+			log.Debugf("getting new url: %s", youtubeSearchURL)
+			html, err = getRenderedPage(youtubeSearchURL)
+			if err != nil {
+				return
 			}
+			break
 		}
-		log.Debugf("Possible track: %s (%s): %ds", youtubeTitle, youtubeID, youtubeDuration)
-		possibleTracks = append(possibleTracks, Track{youtubeTitle, youtubeID})
-		id = youtubeID
-	}
-	if len(possibleTracks) == 0 {
-		err = fmt.Errorf("could not find any videos that matched")
-		return
 	}
 
-	bestMetric := 0.0
-	bestTrack := 0
-	for i := len(possibleTracks) - 1; i >= 0; i-- {
-		metric := smetrics.JaroWinkler(title, possibleTracks[i].Title, 0.7, 4)
-		metric2 := smetrics.JaroWinkler(titleAndArtist, possibleTracks[i].Title, 0.7, 4)
-		if metric2 > metric {
-			metric = metric2
-		}
-		log.Debugf("%s | %s : %2.3f", title, possibleTracks[i].Title, metric)
-		if metric > bestMetric {
-			bestMetric = metric
-			bestTrack = i
+	foundIDs := make(map[string]struct{})
+	for _, line := range strings.Split(html, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, `a id="video-title"`) && strings.Contains(line, `/watch?v=`) {
+			youtubeID := getStringInBetween(line, `/watch?v=`, `"`)
+			if _, ok := foundIDs[youtubeID]; ok {
+				continue
+			}
+			if youtubeID == "" {
+				continue
+			}
+			foundIDs[youtubeID] = struct{}{}
+			var ytInfo YouTubeInfo
+			ytInfo, err = getYoutubeVideoInfo(youtubeID)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			descCheck := " " + strings.ToLower(ytInfo.Title) + " " + strings.Join(strings.Fields(strings.ToLower(ytInfo.Description)), " ") + " "
+			log.Debug(descCheck)
+			if !strings.Contains(descCheck, " "+strings.ToLower(title)+" ") {
+				log.Debug("doesn't have title")
+				continue
+			}
+			descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", "", -1)
+			log.Debug(descCheck)
+			if !strings.Contains(descCheck, " "+strings.ToLower(artist)+" ") {
+				log.Debug("doesn't have artist")
+				continue
+			}
+			id = ytInfo.ID
+			return
 		}
 	}
-	id = possibleTracks[bestTrack].ID
-	log.Debugf("Best track for %s: %s (%s)", titleAndArtist, possibleTracks[bestTrack].Title, possibleTracks[bestTrack].ID)
+
 	return
 }
 
@@ -491,4 +466,71 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 	}
 	return filenames, nil
+}
+
+type YouTubeInfo struct {
+	Title       string
+	Description string
+	ID          string
+}
+
+func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
+	youtubeSearchURL := fmt.Sprintf(
+		`https://www.youtube.com/watch?v=%s`,
+		id,
+	)
+	log.Debugf("getting ytinfo for url: %s", youtubeSearchURL)
+
+	html, err := getRenderedPage(youtubeSearchURL)
+	if err != nil {
+		return
+	}
+
+	ytInfo.ID = id
+	for _, line := range strings.Split(html, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, `window["ytInitialData"] =`) {
+			truncateLine := getStringInBetween(line, `dateText`, ";")
+			ytInfo.Description = getStringInBetween(truncateLine, `"description":{"simpleText":"`, `"`)
+			ytInfo.Description = strings.Replace(ytInfo.Description, "\\n", "\n", -1)
+			ytInfo.Title = getStringInBetween(line, `"videoPrimaryInfoRenderer":{"title":{"simpleText":"`, `"`)
+			break
+		}
+	}
+	return
+}
+
+var getpagejs = []byte(`const puppeteer = require('puppeteer');
+
+(async() => {
+	const browser = await puppeteer.launch({headless:true});
+	const page = await browser.newPage();
+	await page.goto(process.argv[2]);
+    await page.waitFor(500);
+	let content = await page.content();
+	console.log(content);
+	browser.close();
+})();`)
+
+func getRenderedPage(urlToGet string) (html string, err error) {
+	tmpfile, err := ioutil.TempFile(".", "getpage.*.js")
+	if err != nil {
+		return "", err
+	}
+
+	defer os.Remove(tmpfile.Name()) // clean up
+
+	if _, err = tmpfile.Write(getpagejs); err != nil {
+		return "", err
+	}
+	if err = tmpfile.Close(); err != nil {
+		return "", err
+	}
+
+	log.Debugf("%s %s %s", "node", tmpfile.Name(), urlToGet)
+	cmd := exec.Command("node", tmpfile.Name(), urlToGet)
+	var htmlBytes []byte
+	htmlBytes, err = cmd.CombinedOutput()
+	html = string(htmlBytes)
+	return
 }
