@@ -349,7 +349,6 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 
 	var bestResult Result
 	for i := range possibleVideos {
-		log.Debugf("%+v", possibleVideos[i])
 		if possibleVideos[i].Rating > bestResult.Rating {
 			log.Debug("got one!")
 			bestResult = possibleVideos[i]
@@ -557,7 +556,7 @@ func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
 	)
 	log.Debugf("getting ytinfo for url: %s", youtubeSearchURL)
 
-	html, err := getRenderedPage(youtubeSearchURL)
+	html, err := getPage(youtubeSearchURL)
 	if err != nil {
 		return
 	}
@@ -565,13 +564,34 @@ func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
 	ytInfo.ID = id
 	for _, line := range strings.Split(html, "\n") {
 		line = strings.TrimSpace(line)
-		if strings.Contains(line, `window["ytInitialData"] =`) {
-			truncateLine := getStringInBetween(line, `dateText`, ";")
-			ytInfo.Description = getStringInBetween(truncateLine, `"description":{"simpleText":"`, `"`)
-			ytInfo.Description = strings.Replace(ytInfo.Description, "\\n", "\n", -1)
-			ytInfo.Title = getStringInBetween(line, `"videoPrimaryInfoRenderer":{"title":{"simpleText":"`, `"`)
-			break
+		if strings.Contains(line, `meta property="og:title"`) {
+			ytInfo.Title = getStringInBetween(line, `content="`, `"`)
+		} else if strings.Contains(line, `meta property="og:description"`) {
+			ytInfo.Description = getStringInBetween(line, `content="`, `"`)
+			return
 		}
+	}
+	err = fmt.Errorf("could not find info")
+	return
+}
+
+func getPage(urlToGet string) (html string, err error) {
+	var client http.Client
+	resp, err := client.Get(urlToGet)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			err = err2
+			return
+		}
+		html = string(bodyBytes)
+	} else {
+		err = fmt.Errorf("could not get page")
 	}
 	return
 }

@@ -19,6 +19,13 @@ func TestGetSongAPI(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestGetPage(t *testing.T) {
+	defer log.Flush()
+	setLogLevel("debug")
+	html, err := getPage("https://www.youtube.com/watch?v=qxiOMm_x3Xg")
+	assert.Nil(t, err)
+	fmt.Println(html)
+}
 func TestGetFfmpeg(t *testing.T) {
 	defer log.Flush()
 	optionShowProgressBar = true
