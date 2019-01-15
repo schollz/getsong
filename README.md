@@ -20,17 +20,16 @@ go get -u github.com/schollz/getsong/...
 ### Use as a program
 
 ```bash
-$ getsong 'Getting in Tune by The Who'
+$ getsong 'Getting in Tune' 'The Who'
  4.72 MiB / 4.72 MiB [==========================] 100.00% 37.97 KiB/s 2m7s
-Downloaded 'Getting in Tune by The Who.mp3'
+Downloaded 'Getting in Tune by The Who (W6-3rnD7FSc).mp3'
 ```
 
 ### Use as a library
 
 ```golang
-fname, err := getsong.GetSong(getsong.Options{
-    Title:        "True",
-    Artist:       "Spandau Ballet",
+fname, err := getsong.GetSong("True", "Spandau Ballet", getsong.Options{
+    ShowProgress: true,
 })
 if err == nil {
     fmt.Printf("Downloaded '%s'\n", fname)

@@ -45,8 +45,12 @@ type Options struct {
 // If an Artist is provided, it will save it as Artist - Title.mp3
 // You can also pass in a duration, and it will try to find a video that
 // is within 10 seconds of that duration.
-func GetSong(title string, artist string, options Options) (savedFilename string, err error) {
+func GetSong(title string, artist string, option ...Options) (savedFilename string, err error) {
 	defer log.Flush()
+	var options Options
+	if len(option) > 0 {
+		options = option[0]
+	}
 	if options.Debug {
 		setLogLevel("debug")
 	} else {
@@ -249,9 +253,7 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 		}
 	}
 
-	foundIDs := make(map[string]struct{})
-	var bestVideo YouTubeInfo
-	bestRating := 0
+	foundIDs := make(map[string]int)
 	for _, line := range strings.Split(html, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.Contains(line, `a id="video-title"`) && strings.Contains(line, `/watch?v=`) {
@@ -262,38 +264,98 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 			if youtubeID == "" {
 				continue
 			}
-			foundIDs[youtubeID] = struct{}{}
-			var ytInfo YouTubeInfo
-			ytInfo, err = getYoutubeVideoInfo(youtubeID)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			descCheck := " " + strings.ToLower(ytInfo.Title) + " " + strings.Join(strings.Fields(strings.ToLower(ytInfo.Description)), " ") + " "
-			log.Debug(descCheck)
-			if !strings.Contains(descCheck, " "+strings.ToLower(title)+" ") {
-				log.Debug("doesn't have title")
-				continue
-			}
-			descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", " ", -1)
-			log.Debug(descCheck)
-			if !strings.Contains(descCheck, " "+strings.ToLower(artist)+" ") {
-				log.Debug("doesn't have artist")
-				continue
-			}
-			rating := 1
-			if strings.Contains(descCheck, "provided to youtube") {
-				rating = 2
-			}
-			if rating > bestRating {
-				bestRating = rating
-				bestVideo = ytInfo
-			}
+			foundIDs[youtubeID] = len(foundIDs)
 		}
 	}
-	if bestRating > 0 {
-		id = bestVideo.ID
+
+	type Job struct {
+		Position int
+		ID       string
+	}
+	type Result struct {
+		Job         Job
+		Rating      int
+		YouTubeInfo YouTubeInfo
+		Err         error
+	}
+
+	jobs := make(chan Job, len(foundIDs))
+	results := make(chan Result, len(foundIDs))
+	log.Debugf("processing %d found ids", len(foundIDs))
+	for w := 0; w < len(foundIDs); w++ {
+		go func(id int, jobs <-chan Job, results chan<- Result) {
+			for j := range jobs {
+				var errGet error
+				var ytInfo YouTubeInfo
+				ytInfo, errGet = getYoutubeVideoInfo(j.ID)
+				if errGet != nil {
+					results <- Result{
+						Job: j,
+						Err: err,
+					}
+					continue
+				}
+
+				descCheck := " " + strings.ToLower(ytInfo.Title) + " " + strings.Join(strings.Fields(strings.ToLower(ytInfo.Description)), " ") + " "
+				log.Debug(descCheck)
+				if !strings.Contains(descCheck, " "+strings.ToLower(title)+" ") {
+					results <- Result{
+						Job: j,
+						Err: fmt.Errorf("no title found"),
+					}
+					continue
+				}
+				descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", " ", -1)
+				if !strings.Contains(descCheck, " "+strings.ToLower(artist)+" ") {
+					results <- Result{
+						Job: j,
+						Err: fmt.Errorf("no artist found"),
+					}
+					continue
+				}
+				rating := 1
+				if strings.Contains(descCheck, "provided to youtube") {
+					rating = 2
+				}
+				results <- Result{
+					Job:         j,
+					Rating:      rating,
+					YouTubeInfo: ytInfo,
+				}
+			}
+		}(w, jobs, results)
+	}
+
+	for k := range foundIDs {
+		jobs <- Job{
+			Position: foundIDs[k],
+			ID:       k,
+		}
+	}
+	close(jobs)
+
+	possibleVideos := make([]Result, len(foundIDs))
+	for i := 0; i < len(foundIDs); i++ {
+		result := <-results
+		if result.Err != nil {
+			log.Debugf("trying %s got error: %s", result.Job.ID, result.Err.Error())
+		}
+		possibleVideos[result.Job.Position] = result
+	}
+
+	var bestResult Result
+	for i := range possibleVideos {
+		log.Debugf("%+v", possibleVideos[i])
+		if possibleVideos[i].Rating > bestResult.Rating {
+			log.Debug("got one!")
+			bestResult = possibleVideos[i]
+		}
+	}
+	log.Debugf("best result: %+v", bestResult)
+	if bestResult.Rating == 0 {
+		err = fmt.Errorf("no id found")
+	} else {
+		id = bestResult.Job.ID
 	}
 
 	return
