@@ -250,6 +250,8 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 	}
 
 	foundIDs := make(map[string]struct{})
+	var bestVideo YouTubeInfo
+	bestRating := 0
 	for _, line := range strings.Split(html, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.Contains(line, `a id="video-title"`) && strings.Contains(line, `/watch?v=`) {
@@ -280,9 +282,18 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 				log.Debug("doesn't have artist")
 				continue
 			}
-			id = ytInfo.ID
-			return
+			rating := 1
+			if strings.Contains(descCheck, "provided to youtube") {
+				rating = 2
+			}
+			if rating > bestRating {
+				bestRating = rating
+				bestVideo = ytInfo
+			}
 		}
+	}
+	if bestRating > 0 {
+		id = bestVideo.ID
 	}
 
 	return
@@ -524,7 +535,7 @@ func getRenderedPageUsingNode(urlToGet string) (html string, err error) {
 		return "", err
 	}
 
-	// defer os.Remove(tmpfile.Name()) // clean up
+	defer os.Remove(tmpfile.Name()) // clean up
 
 	if _, err = tmpfile.Write(getpagejs); err != nil {
 		return "", err
