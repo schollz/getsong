@@ -49,6 +49,7 @@ type Options struct {
 // You can also pass in a duration, and it will try to find a video that
 // is within 10 seconds of that duration.
 func GetSong(options Options) (savedFilename string, err error) {
+	defer log.Flush()
 	if options.Debug {
 		setLogLevel("debug")
 	} else {
@@ -79,12 +80,18 @@ func GetSong(options Options) (savedFilename string, err error) {
 		err = errors.Wrap(err, "could not get youtube ID")
 		return
 	}
+	youtubeID = strings.TrimSpace(youtubeID)
+	if youtubeID == "" {
+		err = fmt.Errorf("could not find youtube ID")
+		return
+	}
 
 	if !options.DoNotDownload {
 		var fname string
+		log.Debugf("trying to download 'https://www.youtube.com/watch?v=%s'", youtubeID)
 		fname, err = downloadYouTube(youtubeID, savedFilename)
 		if err != nil {
-			err = errors.Wrap(err, "could not downlaod video")
+			err = errors.Wrap(err, "could not download video")
 			return
 		}
 
@@ -506,7 +513,7 @@ var getpagejs = []byte(`const puppeteer = require('puppeteer');
 	const browser = await puppeteer.launch({headless:true});
 	const page = await browser.newPage();
 	await page.goto(process.argv[2]);
-    await page.waitFor(500);
+    await page.waitFor(1000);
 	let content = await page.content();
 	console.log(content);
 	browser.close();

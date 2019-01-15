@@ -24,5 +24,7 @@ getsong 'title of song' 'artist of song'
 	})
 	if err == nil {
 		fmt.Printf("Downloaded '%s'\n", fname)
+	} else {
+		fmt.Println(err)
 	}
 }
