@@ -18,7 +18,6 @@ getsong 'title of song' 'artist of song'
 	}
 	fname, err := getsong.GetSong(os.Args[1], os.Args[2], getsong.Options{
 		ShowProgress: true,
-		Debug:        true,
 	})
 	if err == nil {
 		fmt.Printf("Downloaded '%s'\n", fname)

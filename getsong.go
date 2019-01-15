@@ -90,6 +90,9 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 			return
 		}
 
+		if optionShowProgressBar {
+			fmt.Println("...converting to mp3...")
+		}
 		err = convertToMp3(fname)
 		if err != nil {
 			err = errors.Wrap(err, "could not convert video")
@@ -202,6 +205,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	defer resp.Body.Close()
 
 	if optionShowProgressBar {
+		fmt.Printf("Downloading '%s'...\n", downloadedFilename)
 		progressBar := pb.New64(resp.ContentLength)
 		progressBar.SetUnits(pb.U_BYTES)
 		progressBar.ShowTimeLeft = true
@@ -392,6 +396,7 @@ func userHomeDir() string {
 }
 
 func getFfmpegBinary() (locationToBinary string, err error) {
+
 	startTime := time.Now()
 	defer func() {
 		log.Debugf("time taken: %s", time.Since(startTime))
