@@ -276,7 +276,7 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 				log.Debug("doesn't have title")
 				continue
 			}
-			descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", "", -1)
+			descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", " ", -1)
 			log.Debug(descCheck)
 			if !strings.Contains(descCheck, " "+strings.ToLower(artist)+" ") {
 				log.Debug("doesn't have artist")
