@@ -5,7 +5,9 @@ go:
 
 env:
   - GO111MODULE=on
-  
+ 
+script: make
+
 before_install: 
   - sudo add-apt-repository -y ppa:mc3man/trusty-media
   - sudo apt-get -qq update
