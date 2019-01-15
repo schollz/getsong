@@ -523,9 +523,32 @@ var getpagejs = []byte(`const puppeteer = require('puppeteer');
 
 func getRenderedPage(urlToGet string) (html string, err error) {
 	html, err = getRenderedPageUsingNode(urlToGet)
-	// if err != nil {
-	// get page using server
-	// }
+	if err != nil {
+		// get page using server
+		html, err = getRenderedPageUsingServer(urlToGet)
+	}
+	return
+}
+
+func getRenderedPageUsingServer(urlToGet string) (html string, err error) {
+	log.Debug("gettng renderd page from server")
+	var client http.Client
+	resp, err := client.Get("https://getrenderedpage.schollz.com/" + urlToGet)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			err = err2
+			return
+		}
+		html = string(bodyBytes)
+	} else {
+		err = fmt.Errorf("could not get from server")
+	}
 	return
 }
 
