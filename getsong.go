@@ -36,9 +36,6 @@ func init() {
 // Options allow you to set the artist, title and duration to find the right song.
 // You can also set the progress and debugging for the program execution.
 type Options struct {
-	Title         string
-	Artist        string
-	Duration      int
 	ShowProgress  bool
 	Debug         bool
 	DoNotDownload bool
@@ -48,7 +45,7 @@ type Options struct {
 // If an Artist is provided, it will save it as Artist - Title.mp3
 // You can also pass in a duration, and it will try to find a video that
 // is within 10 seconds of that duration.
-func GetSong(options Options) (savedFilename string, err error) {
+func GetSong(title string, artist string, options Options) (savedFilename string, err error) {
 	defer log.Flush()
 	if options.Debug {
 		setLogLevel("debug")
@@ -57,25 +54,13 @@ func GetSong(options Options) (savedFilename string, err error) {
 	}
 	optionShowProgressBar = options.ShowProgress
 
-	if options.Title == "" {
+	if title == "" {
 		err = fmt.Errorf("must enter title")
 		return
 	}
 
-	if options.Artist != "" {
-		savedFilename = options.Artist
-	}
-	if savedFilename != "" {
-		savedFilename += " - "
-	}
-	savedFilename += options.Title
-
 	var youtubeID string
-	if options.Duration > 0 {
-		youtubeID, err = getMusicVideoID(options.Title, options.Artist, 224)
-	} else {
-		youtubeID, err = getMusicVideoID(options.Title, options.Artist)
-	}
+	youtubeID, err = getMusicVideoID(title, artist)
 	if err != nil {
 		err = errors.Wrap(err, "could not get youtube ID")
 		return
@@ -84,6 +69,12 @@ func GetSong(options Options) (savedFilename string, err error) {
 	if youtubeID == "" {
 		err = fmt.Errorf("could not find youtube ID")
 		return
+	}
+
+	if artist != "" {
+		savedFilename = fmt.Sprintf("%s - %s (%s)", artist, title, youtubeID)
+	} else {
+		savedFilename = fmt.Sprintf("%s (%s)", title, youtubeID)
 	}
 
 	if !options.DoNotDownload {
@@ -510,7 +501,7 @@ func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
 var getpagejs = []byte(`const puppeteer = require('puppeteer');
 
 (async() => {
-	const browser = await puppeteer.launch({headless:true});
+	const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox'],headless:true});
 	const page = await browser.newPage();
 	await page.goto(process.argv[2]);
     await page.waitFor(1000);
@@ -520,12 +511,20 @@ var getpagejs = []byte(`const puppeteer = require('puppeteer');
 })();`)
 
 func getRenderedPage(urlToGet string) (html string, err error) {
+	html, err = getRenderedPageUsingNode(urlToGet)
+	// if err != nil {
+	// get page using server
+	// }
+	return
+}
+
+func getRenderedPageUsingNode(urlToGet string) (html string, err error) {
 	tmpfile, err := ioutil.TempFile(".", "getpage.*.js")
 	if err != nil {
 		return "", err
 	}
 
-	defer os.Remove(tmpfile.Name()) // clean up
+	// defer os.Remove(tmpfile.Name()) // clean up
 
 	if _, err = tmpfile.Write(getpagejs); err != nil {
 		return "", err

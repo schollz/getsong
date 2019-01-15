@@ -13,9 +13,7 @@ import (
 func TestGetSongAPI(t *testing.T) {
 	defer log.Flush()
 
-	_, err := GetSong(Options{
-		Title:        "Old Records",
-		Artist:       "Allen Toussaint",
+	_, err := GetSong("Old Records", "Allen Toussaint", Options{
 		ShowProgress: true,
 		Debug:        true,
 	})
