@@ -234,7 +234,7 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 	)
 	log.Debugf("searching url: %s", youtubeSearchURL)
 
-	html, err := getRenderedPage(youtubeSearchURL)
+	html, err := getPage(youtubeSearchURL)
 	if err != nil {
 		return
 	}
@@ -246,10 +246,11 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 
 	for _, line := range strings.Split(html, "\n") {
 		line = strings.TrimSpace(line)
-		if strings.Contains(line, `yt-search-query-correction`) && strings.Contains(line, `/results?`) && strings.Contains(line, `sp=`) {
+		if strings.Contains(line, `spell-correction-corrected`) && strings.Contains(line, `/results?`) && strings.Contains(line, `Search instead for`) {
+			line = strings.Split(line, `Search instead for`)[1]
 			youtubeSearchURL = "https://www.youtube.com" + getStringInBetween(line, `href="`, `"`)
 			log.Debugf("getting new url: %s", youtubeSearchURL)
-			html, err = getRenderedPage(youtubeSearchURL)
+			html, err = getPage(youtubeSearchURL)
 			if err != nil {
 				return
 			}
@@ -260,7 +261,7 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 	foundIDs := make(map[string]int)
 	for _, line := range strings.Split(html, "\n") {
 		line = strings.TrimSpace(line)
-		if strings.Contains(line, `a id="video-title"`) && strings.Contains(line, `/watch?v=`) {
+		if strings.Contains(line, `yt-lockup`) && strings.Contains(line, `/watch?v=`) {
 			youtubeID := getStringInBetween(line, `/watch?v=`, `"`)
 			if _, ok := foundIDs[youtubeID]; ok {
 				continue
@@ -596,68 +597,69 @@ func getPage(urlToGet string) (html string, err error) {
 	return
 }
 
-var getpagejs = []byte(`const puppeteer = require('puppeteer');
+// deprecated
+// var getpagejs = []byte(`const puppeteer = require('puppeteer');
 
-(async() => {
-	const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox'],headless:true});
-	const page = await browser.newPage();
-	await page.goto(process.argv[2]);
-    await page.waitFor(1000);
-	let content = await page.content();
-	console.log(content);
-	browser.close();
-})();`)
+// (async() => {
+// 	const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox'],headless:true});
+// 	const page = await browser.newPage();
+// 	await page.goto(process.argv[2]);
+//     await page.waitFor(1000);
+// 	let content = await page.content();
+// 	console.log(content);
+// 	browser.close();
+// })();`)
 
-func getRenderedPage(urlToGet string) (html string, err error) {
-	html, err = getRenderedPageUsingNode(urlToGet)
-	if err != nil {
-		// get page using server
-		html, err = getRenderedPageUsingServer(urlToGet)
-	}
-	return
-}
+// func getRenderedPage(urlToGet string) (html string, err error) {
+// 	html, err = getRenderedPageUsingNode(urlToGet)
+// 	if err != nil {
+// 		// get page using server
+// 		html, err = getRenderedPageUsingServer(urlToGet)
+// 	}
+// 	return
+// }
 
-func getRenderedPageUsingServer(urlToGet string) (html string, err error) {
-	log.Debug("getting rendered page from server")
-	var client http.Client
-	resp, err := client.Get("https://getrenderedpage.schollz.com/" + urlToGet)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
+// func getRenderedPageUsingServer(urlToGet string) (html string, err error) {
+// 	log.Debug("getting rendered page from server")
+// 	var client http.Client
+// 	resp, err := client.Get("https://getrenderedpage.schollz.com/" + urlToGet)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
-		if err2 != nil {
-			err = err2
-			return
-		}
-		html = string(bodyBytes)
-	} else {
-		err = fmt.Errorf("could not get from server")
-	}
-	return
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
+// 		if err2 != nil {
+// 			err = err2
+// 			return
+// 		}
+// 		html = string(bodyBytes)
+// 	} else {
+// 		err = fmt.Errorf("could not get from server")
+// 	}
+// 	return
+// }
 
-func getRenderedPageUsingNode(urlToGet string) (html string, err error) {
-	tmpfile, err := ioutil.TempFile(".", "getpage.*.js")
-	if err != nil {
-		return "", err
-	}
+// func getRenderedPageUsingNode(urlToGet string) (html string, err error) {
+// 	tmpfile, err := ioutil.TempFile(".", "getpage.*.js")
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	defer os.Remove(tmpfile.Name()) // clean up
+// 	defer os.Remove(tmpfile.Name()) // clean up
 
-	if _, err = tmpfile.Write(getpagejs); err != nil {
-		return "", err
-	}
-	if err = tmpfile.Close(); err != nil {
-		return "", err
-	}
+// 	if _, err = tmpfile.Write(getpagejs); err != nil {
+// 		return "", err
+// 	}
+// 	if err = tmpfile.Close(); err != nil {
+// 		return "", err
+// 	}
 
-	log.Debugf("%s %s %s", "node", tmpfile.Name(), urlToGet)
-	cmd := exec.Command("node", tmpfile.Name(), urlToGet)
-	var htmlBytes []byte
-	htmlBytes, err = cmd.CombinedOutput()
-	html = string(htmlBytes)
-	return
-}
+// 	log.Debugf("%s %s %s", "node", tmpfile.Name(), urlToGet)
+// 	cmd := exec.Command("node", tmpfile.Name(), urlToGet)
+// 	var htmlBytes []byte
+// 	htmlBytes, err = cmd.CombinedOutput()
+// 	html = string(htmlBytes)
+// 	return
+// }

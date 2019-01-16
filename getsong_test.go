@@ -57,13 +57,23 @@ func TestGetMusicVideoID(t *testing.T) {
 	// this one is trick because its the second result
 	id, err = getMusicVideoID("old records", "allen toussaint")
 	assert.Nil(t, err)
-	assert.Equal(t, "o3HtZ4qIkaI", id)
+	assert.Equal(t, "oa6KzRfvtAs", id)
+
+	// skip the most popular result to get the provided to youtube version
+	id, err = getMusicVideoID("true", "spandau ballet")
+	assert.Nil(t, err)
+	assert.Equal(t, "2H1N6KdU-L0", id)
+
+	// pick one that is not the first
+	id, err = getMusicVideoID("i know what love is", "don white")
+	assert.Nil(t, err)
+	assert.Equal(t, "3LRu9mjiyKo", id)
 }
 
-func TestGetRenderedPage(t *testing.T) {
-	defer log.Flush()
-	setLogLevel("debug")
-	html, err := getRenderedPage("https://www.youtube.com/")
-	assert.Nil(t, err)
-	assert.True(t, strings.Contains(html, "recommended"))
-}
+// func TestGetRenderedPage(t *testing.T) {
+// 	defer log.Flush()
+// 	setLogLevel("debug")
+// 	html, err := getRenderedPage("https://www.youtube.com/")
+// 	assert.Nil(t, err)
+// 	assert.True(t, strings.Contains(html, "recommended"))
+// }
