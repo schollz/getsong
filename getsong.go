@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/cihub/seelog"
@@ -20,6 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
 )
+
+const CHUNK_SIZE = 524288
 
 var ffmpegBinary string
 var optionShowProgressBar bool
@@ -179,47 +183,89 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		err = fmt.Errorf("Unable to get download url: %s", err.Error())
 		return
 	}
+	downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
 
-	var out io.Writer
-	saveFile, err := os.Create(fmt.Sprintf("%s.%s", filename, format.Extension))
+	// download in parallel
+	// get the content length of the video
+	respHead, err := http.Head(downloadURL.String())
 	if err != nil {
 		return
 	}
-	downloadedFilename = saveFile.Name()
-	out = saveFile
-	log.Debugf("downloading %s to %s", info.Title, saveFile.Name())
+	log.Debugf("total length: %d", respHead.ContentLength)
+	contentLength := int(respHead.ContentLength)
 
-	var req *http.Request
-	req, err = http.NewRequest("GET", downloadURL.String(), nil)
-	if err != nil {
-		return
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		if err == nil {
-			err = fmt.Errorf("Received status code %d from download url", resp.StatusCode)
+	// split into ranges and download in parallel
+	var wg sync.WaitGroup
+	numberOfRanges := int(math.Ceil(float64(contentLength) / CHUNK_SIZE))
+	for i := 0; i < numberOfRanges; i++ {
+		startRange := i * CHUNK_SIZE
+		endRange := startRange + CHUNK_SIZE
+		if i != 0 {
+			startRange += 1
 		}
-		err = fmt.Errorf("Unable to start download: %s", err.Error())
-		return
-	}
-	defer resp.Body.Close()
+		if endRange > contentLength {
+			endRange = contentLength
+		}
+		log.Debugf("%d-%d", startRange, endRange)
+		wg.Add(1)
+		go func(it, start, end int, wg *sync.WaitGroup, urlToGet string, downloadedFilename string) {
+			defer wg.Done()
+			var out io.Writer
+			var f *os.File
+			// open as write only
+			f, err = os.OpenFile(fmt.Sprintf("%s%d", downloadedFilename, it), os.O_CREATE|os.O_WRONLY, 0666)
+			if err != nil {
+				panic(err)
+			}
+			defer f.Close()
+			out = f
 
-	if optionShowProgressBar {
-		fmt.Printf("Downloading '%s'...\n", downloadedFilename)
-		progressBar := pb.New64(resp.ContentLength)
-		progressBar.SetUnits(pb.U_BYTES)
-		progressBar.ShowTimeLeft = true
-		progressBar.ShowSpeed = true
-		progressBar.RefreshRate = 1 * time.Second
-		progressBar.Output = os.Stderr
-		progressBar.Start()
-		defer progressBar.Finish()
-		out = io.MultiWriter(out, progressBar)
+			var req *http.Request
+			req, err = http.NewRequest("GET", urlToGet, nil)
+			partToGet := fmt.Sprintf("bytes=%d-%d", start, end)
+			log.Debugf("%d getting part %s", it, partToGet)
+			req.Header.Set("Range", partToGet)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
+			if it == 0 {
+				progressBar := pb.New64(resp.ContentLength)
+				// progressBar.SetUnits(pb.U_BYTES)
+				progressBar.ShowTimeLeft = true
+				progressBar.ShowSpeed = true
+				//	progressBar.RefreshRate = time.Millisecond * 1
+				progressBar.Output = os.Stdout
+				progressBar.Start()
+				defer progressBar.Finish()
+				out = io.MultiWriter(out, progressBar)
+			}
+			_, err = io.Copy(out, resp.Body)
+		}(i, startRange, endRange, &wg, downloadURL.String(), downloadedFilename)
+
 	}
-	_, err = io.Copy(out, resp.Body)
-	saveFile.Close()
+	wg.Wait()
+
+	// concatanate
+	f, err := os.OpenFile(downloadedFilename, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		return
+		panic(err)
+	}
+	defer f.Close()
+	for i := 0; i < numberOfRanges; i++ {
+		fname := fmt.Sprintf("%s%d", downloadedFilename, i)
+		fh, err := os.Open(fname)
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = io.Copy(f, fh)
+		if err != nil {
+			panic(err)
+		}
+		fh.Close()
+		os.Remove(fname)
 	}
 
 	return
@@ -263,6 +309,7 @@ func getMusicVideoID(title string, artist string, expectedDuration ...int) (id s
 		line = strings.TrimSpace(line)
 		if strings.Contains(line, `yt-lockup`) && strings.Contains(line, `/watch?v=`) {
 			youtubeID := getStringInBetween(line, `/watch?v=`, `"`)
+			youtubeID = strings.Split(youtubeID, "&amp;")[0]
 			if _, ok := foundIDs[youtubeID]; ok {
 				continue
 			}
