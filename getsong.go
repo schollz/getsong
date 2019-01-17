@@ -184,6 +184,9 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		return
 	}
 	downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
+	if optionShowProgressBar {
+		fmt.Printf("Downloading %s...\n", filename)
+	}
 
 	// download in parallel
 	// get the content length of the video

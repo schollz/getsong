@@ -23,7 +23,7 @@ The aim of this library to have a low (or zero) false positive rate, so it works
 ```bash
 $ getsong 'Getting in Tune' 'The Who'
 Downloading 'Getting in Tune by The Who (W6-3rnD7FSc).webm'...
- 4.72 MiB / 4.72 MiB [==========================] 100.00% 37.97 KiB/s 2m7s
+ 524289 / 524289 [==========================] 100.00% 
 ...converting to mp3...
 Downloaded 'Getting in Tune by The Who (W6-3rnD7FSc).mp3'
 ```
