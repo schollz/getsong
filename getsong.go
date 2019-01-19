@@ -260,12 +260,12 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		fname := fmt.Sprintf("%s%d", downloadedFilename, i)
 		fh, err := os.Open(fname)
 		if err != nil {
-			panic(err)
+			log.Error(err)
 		}
 
 		_, err = io.Copy(f, fh)
 		if err != nil {
-			panic(err)
+			log.Error(err)
 		}
 		fh.Close()
 		os.Remove(fname)
