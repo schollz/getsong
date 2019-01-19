@@ -233,7 +233,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 				panic(err)
 			}
 			defer resp.Body.Close()
-			if it == 0 {
+			if it == 0 && optionShowProgressBar {
 				progressBar := pb.New64(resp.ContentLength)
 				// progressBar.SetUnits(pb.U_BYTES)
 				progressBar.ShowTimeLeft = true
