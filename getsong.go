@@ -196,7 +196,10 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	}
 	log.Debugf("total length: %d", respHead.ContentLength)
 	contentLength := int(respHead.ContentLength)
-
+	if contentLength > 15000000 {
+		err = fmt.Errorf("content is to long: %d",contentLength)
+		return
+	}
 	// split into ranges and download in parallel
 	var wg sync.WaitGroup
 	numberOfRanges := int(math.Ceil(float64(contentLength) / CHUNK_SIZE))
@@ -270,6 +273,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		fh.Close()
 		os.Remove(fname)
 	}
+
 
 	return
 }
