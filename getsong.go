@@ -20,7 +20,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
 	"github.com/pkg/errors"
-	"gopkg.in/cheggaaa/pb.v1"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 const CHUNK_SIZE = 524288
@@ -148,7 +148,7 @@ func setLogLevel(level string) (err error) {
 func convertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.TrimRight(filename, filepath.Ext(filename))
 	// convert to mp3
-	cmd := exec.Command(ffmpegBinary, "-i", filename, "-y", filenameWithoutExtension+".mp3")
+	cmd := exec.Command(ffmpegBinary, "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
 	_, err = cmd.CombinedOutput()
 	if err == nil {
 		os.Remove(filename)
@@ -197,7 +197,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	log.Debugf("total length: %d", respHead.ContentLength)
 	contentLength := int(respHead.ContentLength)
 	if contentLength > 15000000 {
-		err = fmt.Errorf("content is to long: %d",contentLength)
+		err = fmt.Errorf("content is to long: %d", contentLength)
 		return
 	}
 	// split into ranges and download in parallel
@@ -273,7 +273,6 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		fh.Close()
 		os.Remove(fname)
 	}
-
 
 	return
 }
