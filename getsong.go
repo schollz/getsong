@@ -33,7 +33,8 @@ func init() {
 	var err error
 	ffmpegBinary, err = getFfmpegBinary()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
@@ -221,7 +222,8 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			// open as write only
 			f, err = os.OpenFile(fmt.Sprintf("%s%d", downloadedFilename, it), os.O_CREATE|os.O_WRONLY, 0666)
 			if err != nil {
-				panic(err)
+				log.Error(err)
+				return
 			}
 			defer f.Close()
 			out = f
@@ -233,7 +235,8 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			req.Header.Set("Range", partToGet)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				panic(err)
+				log.Error(err)
+				return
 			}
 			defer resp.Body.Close()
 			if it == 0 && optionShowProgressBar {
@@ -256,7 +259,8 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 	// concatanate
 	f, err := os.OpenFile(downloadedFilename, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		panic(err)
+		log.Error(err)
+		return
 	}
 	defer f.Close()
 	for i := 0; i < numberOfRanges; i++ {
@@ -488,7 +492,8 @@ func getFfmpegBinary() (locationToBinary string, err error) {
 	if runtime.GOOS == "windows" {
 		urlToDownload = "https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-4.1-win64-static.zip"
 	} else {
-		panic("os not supported")
+		err = fmt.Errorf("Please install ffmpeg before continuing")
+		return
 	}
 
 	var out io.Writer
