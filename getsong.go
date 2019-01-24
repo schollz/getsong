@@ -189,9 +189,14 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		fmt.Printf("Downloading %s...\n", filename)
 	}
 
+	err = downloadFromYouTube(downloadedFilename, downloadURL.String())
+	return
+}
+
+func downloadFromYouTube(downloadedFilename string, downloadURL string) (err error) {
 	// download in parallel
 	// get the content length of the video
-	respHead, err := http.Head(downloadURL.String())
+	respHead, err := http.Head(downloadURL)
 	if err != nil {
 		return
 	}
@@ -251,7 +256,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 				out = io.MultiWriter(out, progressBar)
 			}
 			_, err = io.Copy(out, resp.Body)
-		}(i, startRange, endRange, &wg, downloadURL.String(), downloadedFilename)
+		}(i, startRange, endRange, &wg, downloadURL, downloadedFilename)
 
 	}
 	wg.Wait()
