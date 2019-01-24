@@ -147,7 +147,7 @@ func setLogLevel(level string) (err error) {
 
 // convertToMp3 uses ffmpeg to convert to mp3
 func convertToMp3(filename string) (err error) {
-	filenameWithoutExtension := strings.TrimRight(filename, filepath.Ext(filename))
+	filenameWithoutExtension := strings.Replace(filename, filepath.Ext(filename), "", 1)
 	// convert to mp3
 	cmd := exec.Command(ffmpegBinary, "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
 	_, err = cmd.CombinedOutput()
