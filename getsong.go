@@ -26,10 +26,10 @@ import (
 const CHUNK_SIZE = 524288
 
 var ffmpegBinary string
-var optionShowProgressBar bool
+var OptionShowProgressBar bool
 
 func init() {
-	setLogLevel("info")
+	SetLogLevel("info")
 	var err error
 	ffmpegBinary, err = getFfmpegBinary()
 	if err != nil {
@@ -57,11 +57,11 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 		options = option[0]
 	}
 	if options.Debug {
-		setLogLevel("debug")
+		SetLogLevel("debug")
 	} else {
-		setLogLevel("info")
+		SetLogLevel("info")
 	}
-	optionShowProgressBar = options.ShowProgress
+	OptionShowProgressBar = options.ShowProgress
 
 	if title == "" {
 		err = fmt.Errorf("must enter title")
@@ -69,7 +69,7 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 	}
 
 	var youtubeID string
-	youtubeID, err = getMusicVideoID(title, artist)
+	youtubeID, err = GetMusicVideoID(title, artist)
 	if err != nil {
 		err = errors.Wrap(err, "could not get youtube ID")
 		return
@@ -95,10 +95,10 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 			return
 		}
 
-		if optionShowProgressBar {
+		if OptionShowProgressBar {
 			fmt.Println("...converting to mp3...")
 		}
-		err = convertToMp3(fname)
+		err = ConvertToMp3(fname)
 		if err != nil {
 			err = errors.Wrap(err, "could not convert video")
 			return
@@ -109,8 +109,8 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 	return
 }
 
-// setLogLevel determines the log level
-func setLogLevel(level string) (err error) {
+// SetLogLevel determines the log level
+func SetLogLevel(level string) (err error) {
 	// https://github.com/cihub/seelog/wiki/Log-levels
 	appConfig := `
 	<seelog minlevel="` + level + `">
@@ -145,8 +145,8 @@ func setLogLevel(level string) (err error) {
 	return
 }
 
-// convertToMp3 uses ffmpeg to convert to mp3
-func convertToMp3(filename string) (err error) {
+// ConvertToMp3 uses ffmpeg to convert to mp3
+func ConvertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.Replace(filename, filepath.Ext(filename), "", 1)
 	// convert to mp3
 	cmd := exec.Command(ffmpegBinary, "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
@@ -185,15 +185,17 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		return
 	}
 	downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
-	if optionShowProgressBar {
+	if OptionShowProgressBar {
 		fmt.Printf("Downloading %s...\n", filename)
 	}
 
-	err = downloadFromYouTube(downloadedFilename, downloadURL.String())
+	err = DownloadFromYouTube(downloadedFilename, downloadURL.String())
 	return
 }
 
-func downloadFromYouTube(downloadedFilename string, downloadURL string) (err error) {
+// DownloadFromYouTube will use the download URL to get it in parallel and
+// save it as the downloadedFilename.
+func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err error) {
 	// download in parallel
 	// get the content length of the video
 	respHead, err := http.Head(downloadURL)
@@ -244,7 +246,7 @@ func downloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 				return
 			}
 			defer resp.Body.Close()
-			if it == 0 && optionShowProgressBar {
+			if it == 0 && OptionShowProgressBar {
 				progressBar := pb.New64(resp.ContentLength)
 				// progressBar.SetUnits(pb.U_BYTES)
 				progressBar.ShowTimeLeft = true
@@ -286,8 +288,8 @@ func downloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 	return
 }
 
-// getMusicVideoID returns the ids for a specified title and artist
-func getMusicVideoID(title string, artist string, expectedDuration ...int) (id string, err error) {
+// GetMusicVideoID returns the ids for a specified title and artist
+func GetMusicVideoID(title string, artist string) (id string, err error) {
 	searchTerm := strings.ToLower(strings.TrimSpace(title + " " + artist))
 	youtubeSearchURL := fmt.Sprintf(
 		`https://www.youtube.com/results?search_query=%s`,
@@ -659,70 +661,3 @@ func getPage(urlToGet string) (html string, err error) {
 	}
 	return
 }
-
-// deprecated
-// var getpagejs = []byte(`const puppeteer = require('puppeteer');
-
-// (async() => {
-// 	const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox'],headless:true});
-// 	const page = await browser.newPage();
-// 	await page.goto(process.argv[2]);
-//     await page.waitFor(1000);
-// 	let content = await page.content();
-// 	console.log(content);
-// 	browser.close();
-// })();`)
-
-// func getRenderedPage(urlToGet string) (html string, err error) {
-// 	html, err = getRenderedPageUsingNode(urlToGet)
-// 	if err != nil {
-// 		// get page using server
-// 		html, err = getRenderedPageUsingServer(urlToGet)
-// 	}
-// 	return
-// }
-
-// func getRenderedPageUsingServer(urlToGet string) (html string, err error) {
-// 	log.Debug("getting rendered page from server")
-// 	var client http.Client
-// 	resp, err := client.Get("https://getrenderedpage.schollz.com/" + urlToGet)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer resp.Body.Close()
-
-// 	if resp.StatusCode == http.StatusOK {
-// 		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
-// 		if err2 != nil {
-// 			err = err2
-// 			return
-// 		}
-// 		html = string(bodyBytes)
-// 	} else {
-// 		err = fmt.Errorf("could not get from server")
-// 	}
-// 	return
-// }
-
-// func getRenderedPageUsingNode(urlToGet string) (html string, err error) {
-// 	tmpfile, err := ioutil.TempFile(".", "getpage.*.js")
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	defer os.Remove(tmpfile.Name()) // clean up
-
-// 	if _, err = tmpfile.Write(getpagejs); err != nil {
-// 		return "", err
-// 	}
-// 	if err = tmpfile.Close(); err != nil {
-// 		return "", err
-// 	}
-
-// 	log.Debugf("%s %s %s", "node", tmpfile.Name(), urlToGet)
-// 	cmd := exec.Command("node", tmpfile.Name(), urlToGet)
-// 	var htmlBytes []byte
-// 	htmlBytes, err = cmd.CombinedOutput()
-// 	html = string(htmlBytes)
-// 	return
-// }
