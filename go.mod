@@ -11,6 +11,7 @@ require (
 	github.com/otium/ytdl v0.0.0-20181217105247-44fe64bba886
 	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
+	github.com/schollz/progressbar/v2 v2.9.1
 	github.com/sirupsen/logrus v1.3.0
 	github.com/stretchr/testify v1.3.0
 	github.com/xrash/smetrics v0.0.0-20170218160415-a3153f7040e9
@@ -18,5 +19,4 @@ require (
 	golang.org/x/net v0.0.0-20190125091013-d26f9f9a57f3
 	golang.org/x/sys v0.0.0-20190203050204-7ae0202eb74c
 	golang.org/x/text v0.3.0 // indirect
-	gopkg.in/cheggaaa/pb.v1 v1.0.27
 )

@@ -21,7 +21,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
 	"github.com/pkg/errors"
-	pb "gopkg.in/cheggaaa/pb.v1"
+	"github.com/schollz/progressbar/v2"
 )
 
 const CHUNK_SIZE = 524288
@@ -256,15 +256,8 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 			}
 			defer resp.Body.Close()
 			if it == 0 && OptionShowProgressBar {
-				progressBar := pb.New64(resp.ContentLength)
-				// progressBar.SetUnits(pb.U_BYTES)
-				progressBar.ShowTimeLeft = true
-				progressBar.ShowSpeed = true
-				//	progressBar.RefreshRate = time.Millisecond * 1
-				progressBar.Output = os.Stdout
-				progressBar.Start()
-				defer progressBar.Finish()
-				out = io.MultiWriter(out, progressBar)
+				bar := progressbar.NewOptions64(resp.ContentLength, progressbar.OptionSetBytes64(resp.ContentLength))
+				out = io.MultiWriter(out, bar)
 			}
 			_, err = io.Copy(out, resp.Body)
 		}(i, startRange, endRange, &wg, downloadURL, downloadedFilename)
@@ -535,15 +528,8 @@ func getFfmpegBinary() (locationToBinary string, err error) {
 	defer resp.Body.Close()
 
 	fmt.Println("Downloading ffmpeg...")
-	progressBar := pb.New64(resp.ContentLength)
-	progressBar.SetUnits(pb.U_BYTES)
-	progressBar.ShowTimeLeft = true
-	progressBar.ShowSpeed = true
-	progressBar.RefreshRate = 1 * time.Second
-	progressBar.Output = os.Stderr
-	progressBar.Start()
-	defer progressBar.Finish()
-	out = io.MultiWriter(out, progressBar)
+	bar := progressbar.NewOptions64(resp.ContentLength, progressbar.OptionSetBytes64(resp.ContentLength))
+	out = io.MultiWriter(out, bar)
 	_, err = io.Copy(out, resp.Body)
 	saveFile.Close()
 	if err != nil {
