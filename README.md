@@ -49,10 +49,6 @@ Pull requests are welcome. Feel free to...
 - Fix bugs
 - Suggest improvements
 
-## Todo
-
-- [ ] Fix problem when downloading songs with `/` in their name
-- [ ] Edit the ID3 tags on the mp3 after downloading
 
 ## License
 
