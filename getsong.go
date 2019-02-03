@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bogem/id3v2"
 	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
 	"github.com/pkg/errors"
@@ -85,6 +86,7 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 	} else {
 		savedFilename = fmt.Sprintf("%s (%s)", title, youtubeID)
 	}
+	savedFilename = sanitizeFileName(savedFilename)
 
 	if !options.DoNotDownload {
 		var fname string
@@ -101,6 +103,12 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 		err = ConvertToMp3(fname)
 		if err != nil {
 			err = errors.Wrap(err, "could not convert video")
+			return
+		}
+		log.Debugf("setting id3 tag for %s", savedFilename+".mp3")
+		err = SetID3Tags(savedFilename+".mp3", artist, title, youtubeID)
+		if err != nil {
+			err = errors.Wrap(err, "could not set id3 tags")
 			return
 		}
 	}
@@ -154,6 +162,7 @@ func ConvertToMp3(filename string) (err error) {
 	if err == nil {
 		os.Remove(filename)
 	}
+
 	return
 }
 
@@ -442,7 +451,7 @@ func getStringInBetween(str string, start string, end string) (result string) {
 
 var illegalFileNameCharacters = regexp.MustCompile(`[^[a-zA-Z0-9]-_]`)
 
-func sanitizeFileNamePart(part string) string {
+func sanitizeFileName(part string) string {
 	part = strings.Replace(part, "/", "-", -1)
 	part = illegalFileNameCharacters.ReplaceAllString(part, "")
 	return part
@@ -659,5 +668,31 @@ func getPage(urlToGet string) (html string, err error) {
 	} else {
 		err = fmt.Errorf("could not get page")
 	}
+	return
+}
+
+func SetID3Tags(fname, artist, title, yt string) (err error) {
+	// Open file and parse tag in it.
+	tag, err := id3v2.Open(fname, id3v2.Options{Parse: false})
+	if err != nil {
+		return
+	}
+
+	// Set simple text frames.
+	tag.SetArtist(artist)
+	tag.SetTitle(title)
+
+	// Set comment frame.
+	comment := id3v2.CommentFrame{
+		Encoding:    id3v2.EncodingUTF8,
+		Language:    "eng",
+		Description: "YouTube ID",
+		Text:        yt,
+	}
+	tag.AddCommentFrame(comment)
+
+	// Write it to file.
+	err = tag.Save()
+	tag.Close()
 	return
 }
