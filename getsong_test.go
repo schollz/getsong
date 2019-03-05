@@ -62,7 +62,7 @@ func TestGetMusicVideoID(t *testing.T) {
 	// skip the most popular result to get the provided to youtube version
 	id, err = GetMusicVideoID("true", "spandau ballet")
 	assert.Nil(t, err)
-	assert.Equal(t, "ITX-SEsyGRg", id)
+	assert.True(t, "ITX-SEsyGRg" == id || "2H1N6KdU-L0" == id)
 
 	// pick one that is not the first
 	id, err = GetMusicVideoID("i know what love is", "don white")
