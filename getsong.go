@@ -165,7 +165,6 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 
 		err = DownloadFromYouTube(downloadedFilename, downloadURL.String())
 		if err != nil && err.Error() == "no content" {
-			continue
 		} else {
 			break
 		}

@@ -15,6 +15,11 @@ func TestGetSongAPI(t *testing.T) {
 		Debug:        true,
 	})
 	assert.Nil(t, err)
+	_, err = GetSong("Eva", "Haerts", Options{
+		ShowProgress: true,
+		Debug:        true,
+	})
+	assert.Nil(t, err)
 }
 
 func TestGetPage(t *testing.T) {
