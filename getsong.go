@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/bogem/id3v2"
-	log "github.com/cihub/seelog"
 	"github.com/otium/ytdl"
 	"github.com/pkg/errors"
+	log "github.com/schollz/logger"
 	"github.com/schollz/progressbar/v2"
 )
 
@@ -30,7 +30,7 @@ var ffmpegBinary string
 var OptionShowProgressBar bool
 
 func init() {
-	SetLogLevel("info")
+	log.SetLevel("info")
 	var err error
 	ffmpegBinary, err = getFfmpegBinary()
 	if err != nil {
@@ -52,15 +52,14 @@ type Options struct {
 // You can also pass in a duration, and it will try to find a video that
 // is within 10 seconds of that duration.
 func GetSong(title string, artist string, option ...Options) (savedFilename string, err error) {
-	defer log.Flush()
 	var options Options
 	if len(option) > 0 {
 		options = option[0]
 	}
 	if options.Debug {
-		SetLogLevel("debug")
+		log.SetLevel("debug")
 	} else {
-		SetLogLevel("info")
+		log.SetLevel("info")
 	}
 	OptionShowProgressBar = options.ShowProgress
 
@@ -114,42 +113,6 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 	}
 
 	savedFilename += ".mp3"
-	return
-}
-
-// SetLogLevel determines the log level
-func SetLogLevel(level string) (err error) {
-	// https://github.com/cihub/seelog/wiki/Log-levels
-	appConfig := `
-	<seelog minlevel="` + level + `">
-	<outputs formatid="stdout">
-	<filter levels="debug,trace">
-		<console formatid="debug"/>
-	</filter>
-	<filter levels="info">
-		<console formatid="info"/>
-	</filter>
-	<filter levels="critical,error">
-		<console formatid="error"/>
-	</filter>
-	<filter levels="warn">
-		<console formatid="warn"/>
-	</filter>
-	</outputs>
-	<formats>
-		<format id="stdout"   format="%Date %Time [%LEVEL] %File %FuncShort:%Line %Msg %n" />
-		<format id="debug"   format="%Date %Time %EscM(37)[%LEVEL]%EscM(0) %File %FuncShort:%Line %Msg %n" />
-		<format id="info"    format="%Date %Time %EscM(36)[%LEVEL]%EscM(0) %File %FuncShort:%Line %Msg %n" />
-		<format id="warn"    format="%Date %Time %EscM(33)[%LEVEL]%EscM(0) %File %FuncShort:%Line %Msg %n" />
-		<format id="error"   format="%Date %Time %EscM(31)[%LEVEL]%EscM(0) %File %FuncShort:%Line %Msg %n" />
-	</formats>
-	</seelog>
-	`
-	logger, err := log.LoggerFromConfigAsBytes([]byte(appConfig))
-	if err != nil {
-		return
-	}
-	log.ReplaceLogger(logger)
 	return
 }
 

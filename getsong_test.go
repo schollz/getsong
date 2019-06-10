@@ -5,13 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/cihub/seelog"
+	log "github.com/schollz/logger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSongAPI(t *testing.T) {
-	defer log.Flush()
-
 	_, err := GetSong("Old Records", "Allen Toussaint", Options{
 		ShowProgress: true,
 		Debug:        true,
@@ -20,14 +18,14 @@ func TestGetSongAPI(t *testing.T) {
 }
 
 func TestGetPage(t *testing.T) {
-	defer log.Flush()
-	SetLogLevel("debug")
+
+	log.SetLevel("debug")
 	html, err := getPage("https://www.youtube.com/watch?v=qxiOMm_x3Xg")
 	assert.Nil(t, err)
 	assert.True(t, strings.Contains(html, "<html"))
 }
 func TestGetFfmpeg(t *testing.T) {
-	defer log.Flush()
+
 	OptionShowProgressBar = true
 
 	locationToBinary, err := getFfmpegBinary()
@@ -37,16 +35,16 @@ func TestGetFfmpeg(t *testing.T) {
 }
 
 func TestGetYouTubeInfo(t *testing.T) {
-	defer log.Flush()
-	SetLogLevel("debug")
+
+	log.SetLevel("debug")
 	info, err := getYoutubeVideoInfo("qxiOMm_x3Xg")
 	assert.Nil(t, err)
 	fmt.Printf("%+v\n", info)
 }
 
 func TestGetMusicVideoID(t *testing.T) {
-	defer log.Flush()
-	SetLogLevel("debug")
+
+	log.SetLevel("debug")
 
 	// this one is tricky because the band name is spelled weird and requires
 	// clicking through to force youtube to search the wrong spelling
@@ -71,8 +69,8 @@ func TestGetMusicVideoID(t *testing.T) {
 }
 
 // func TestGetRenderedPage(t *testing.T) {
-// 	defer log.Flush()
-// 	SetLogLevel("debug")
+//
+// 	log.SetLevel("debug")
 // 	html, err := getRenderedPage("https://www.youtube.com/")
 // 	assert.Nil(t, err)
 // 	assert.True(t, strings.Contains(html, "recommended"))
