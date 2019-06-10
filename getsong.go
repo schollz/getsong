@@ -131,31 +131,34 @@ func ConvertToMp3(filename string) (err error) {
 
 // downloadYouTube downloads a youtube video and saves using the filename. Returns the filename with the extension.
 func downloadYouTube(youtubeID string, filename string) (downloadedFilename string, err error) {
-	info, err := ytdl.GetVideoInfo(youtubeID)
-	if err != nil {
-		err = fmt.Errorf("Unable to fetch video info: %s", err.Error())
-		return
-	}
-	bestQuality := 0
-	var format ytdl.Format
-	for _, f := range info.Formats {
-		if f.VideoEncoding == "" {
-			if f.AudioBitrate > bestQuality {
-				bestQuality = f.AudioBitrate
-				format = f
+	for i := 0; i < 5; i++ {
+		info, err := ytdl.GetVideoInfo(youtubeID)
+		if err != nil {
+			err = fmt.Errorf("Unable to fetch video info: %s", err.Error())
+			log.Error(err)
+			return "", err
+		}
+		bestQuality := 0
+		var format ytdl.Format
+		for _, f := range info.Formats {
+			if f.VideoEncoding == "" {
+				if f.AudioBitrate > bestQuality {
+					bestQuality = f.AudioBitrate
+					format = f
+				}
 			}
 		}
-	}
-	if bestQuality == 0 {
-		err = fmt.Errorf("No audio available")
-		return
-	}
-	for i := 0; i < 5; i++ {
+		if bestQuality == 0 {
+			err = fmt.Errorf("No audio available")
+			log.Error(err)
+			return "", err
+		}
 		log.Debugf("trying %d time", i)
 		downloadURL, err := info.GetDownloadURL(format)
 		log.Debugf("downloading %s", downloadURL)
 		if err != nil {
 			err = fmt.Errorf("Unable to get download url: %s", err.Error())
+			log.Error(err)
 			return "", err
 		}
 		downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
