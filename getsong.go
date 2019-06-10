@@ -380,7 +380,6 @@ func GetMusicVideoID(title string, artist string) (id string, err error) {
 	var bestResult Result
 	for i := range possibleVideos {
 		if possibleVideos[i].Rating > bestResult.Rating {
-			log.Debug("got one!")
 			bestResult = possibleVideos[i]
 		}
 	}
