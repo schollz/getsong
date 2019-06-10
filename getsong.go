@@ -150,18 +150,26 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		err = fmt.Errorf("No audio available")
 		return
 	}
-	downloadURL, err := info.GetDownloadURL(format)
-	log.Debugf("downloading %s", downloadURL)
-	if err != nil {
-		err = fmt.Errorf("Unable to get download url: %s", err.Error())
-		return
-	}
-	downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
-	if OptionShowProgressBar {
-		fmt.Printf("Downloading %s...\n", filename)
-	}
+	for i := 0; i < 5; i++ {
+		log.Debugf("trying %d time", i)
+		downloadURL, err := info.GetDownloadURL(format)
+		log.Debugf("downloading %s", downloadURL)
+		if err != nil {
+			err = fmt.Errorf("Unable to get download url: %s", err.Error())
+			return "", err
+		}
+		downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
+		if OptionShowProgressBar {
+			fmt.Printf("Downloading %s...\n", filename)
+		}
 
-	err = DownloadFromYouTube(downloadedFilename, downloadURL.String())
+		err = DownloadFromYouTube(downloadedFilename, downloadURL.String())
+		if err != nil && err.Error() == "no content" {
+			continue
+		} else {
+			break
+		}
+	}
 	return
 }
 
@@ -178,6 +186,9 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 	contentLength := int(respHead.ContentLength)
 	if contentLength > 15000000 {
 		err = fmt.Errorf("content is to long: %d", contentLength)
+		return
+	} else if contentLength == 0 {
+		err = fmt.Errorf("no content")
 		return
 	}
 	// split into ranges and download in parallel
