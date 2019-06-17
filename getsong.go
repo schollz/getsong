@@ -155,6 +155,12 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		}
 		log.Debugf("trying %d time", i)
 		downloadURL, err := info.GetDownloadURL(format)
+		downloadURLString := downloadURL.String()
+		// temp fix for the paramter youtube wants sometimes
+		// see https://github.com/ytdl-org/youtube-dl/pull/18927
+		if i > 0 {
+			downloadURLString = strings.Replace(downloadURLString, "signature=", "sig=", -1)
+		}
 		log.Debugf("downloading %s", downloadURL)
 		if err != nil {
 			err = fmt.Errorf("Unable to get download url: %s", err.Error())
@@ -166,7 +172,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			fmt.Printf("Downloading %s...\n", filename)
 		}
 
-		err = DownloadFromYouTube(downloadedFilename, downloadURL.String())
+		err = DownloadFromYouTube(downloadedFilename, downloadURLString)
 		if err != nil && err.Error() == "no content" {
 		} else {
 			break
