@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/bogem/id3v2"
-	"github.com/corny/ytdl"
 	"github.com/pkg/errors"
+	"github.com/rylio/ytdl"
 	log "github.com/schollz/logger"
 	"github.com/schollz/progressbar/v2"
 )
