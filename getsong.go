@@ -74,7 +74,7 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 
 TryAgain:
 	tries++
-	if tries > 2 {
+	if tries > 6 {
 		return
 	}
 	if youtubeID != "" {

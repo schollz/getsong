@@ -65,6 +65,11 @@ func TestGetMusicVideoID(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "qxiOMm_x3Xg", id)
 
+	id, err = GetMusicVideoID("movies", "Weyes Blood")
+	log.Infof("movies: %s", id)
+	assert.Nil(t, err)
+	assert.True(t, "RFtRq6t3jOo" == id)
+
 	// this one is trick because its the second result
 	id, err = GetMusicVideoID("old records", "allen toussaint")
 	log.Infof("old records: %s", id)
