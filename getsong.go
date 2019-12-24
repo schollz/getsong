@@ -165,7 +165,6 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		}
 		if bestQuality == 0 {
 			err = fmt.Errorf("No audio available")
-			log.Error(err)
 			return "", err
 		}
 		log.Debugf("trying %d time", i)
