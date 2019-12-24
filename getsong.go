@@ -2,6 +2,7 @@ package getsong
 
 import (
 	"archive/zip"
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -110,10 +112,6 @@ TryAgain:
 			err = errors.Wrap(err, "could not download video")
 			goto TryAgain
 		}
-
-		if OptionShowProgressBar {
-			fmt.Println("...converting to mp3...")
-		}
 		err = ConvertToMp3(fname)
 		if err != nil {
 			err = errors.Wrap(err, "could not convert video")
@@ -132,15 +130,87 @@ TryAgain:
 }
 
 // ConvertToMp3 uses ffmpeg to convert to mp3
+
+// FFmpegConvertToMp3 uses ffmpeg to convert to mp3
 func ConvertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.Replace(filename, filepath.Ext(filename), "", 1)
+	defer func() {
+		if err != nil {
+			os.Remove(filenameWithoutExtension + ".mp3")
+		}
+		os.Remove(filename)
+	}()
+
 	// convert to mp3
-	cmd := exec.Command(ffmpegBinary, "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
-	_, err = cmd.CombinedOutput()
+	cmd := exec.Command(ffmpegBinary, "-stats", "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		os.Remove(filenameWithoutExtension + ".mp3")
+		return
 	}
-	os.Remove(filename)
+	cmd.Start()
+
+	lastLine := ""
+	scanner := bufio.NewScanner(stderr)
+	scanner.Split(bufio.ScanWords)
+	haveError := false
+	nextIsDuration := false
+
+	var bar *progressbar.ProgressBar
+
+	for scanner.Scan() {
+		m := scanner.Text()
+		if bar != nil {
+			m = strings.TrimPrefix(m, "time=")
+			bar.Set64(ParseDurationString(m))
+		}
+
+		if strings.TrimSpace(m) == filename+":" {
+			haveError = true
+		}
+		if haveError {
+			lastLine += m + " "
+		}
+		if nextIsDuration && OptionShowProgressBar {
+			nextIsDuration = false
+			bar = progressbar.NewOptions64(ParseDurationString(m),
+				progressbar.OptionSetPredictTime(true),
+				progressbar.OptionClearOnFinish(),
+				progressbar.OptionSetDescription(fmt.Sprintf(filenameWithoutExtension)),
+			)
+		}
+		if m == "Duration:" {
+			nextIsDuration = true
+		}
+	}
+	bar.Finish()
+
+	err = cmd.Wait()
+	if err != nil {
+		err = fmt.Errorf("%s", strings.TrimSpace(lastLine))
+	}
+	return
+}
+
+// ParseDurationString 00:07:50.01 into milliseconds
+func ParseDurationString(s string) (milliseconds int64) {
+	if strings.Count(s, ":") != 2 && strings.Count(s, ".") != 1 {
+		return
+	}
+	s = strings.Replace(s, ",", "", -1)
+	s = strings.Replace(s, ":", " ", -1)
+	s = strings.Replace(s, ".", " ", -1)
+	ss := strings.Fields(s)
+	if len(ss) != 4 {
+		return
+	}
+	num, _ := strconv.Atoi(ss[0])
+	milliseconds += 3600000 * int64(num)
+	num, _ = strconv.Atoi(ss[1])
+	milliseconds += 60000 * int64(num)
+	num, _ = strconv.Atoi(ss[2])
+	milliseconds += 1000 * int64(num)
+	num, _ = strconv.Atoi(ss[3])
+	milliseconds += int64(num)
 	return
 }
 
@@ -252,7 +322,11 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 			}
 			defer resp.Body.Close()
 			if it == 0 && OptionShowProgressBar {
-				bar := progressbar.NewOptions64(resp.ContentLength, progressbar.OptionSetBytes64(resp.ContentLength))
+				bar := progressbar.NewOptions64(resp.ContentLength,
+					progressbar.OptionSetDescription(strings.Split(downloadedFilename, ".")[0]),
+					progressbar.OptionSetBytes64(resp.ContentLength),
+					progressbar.OptionClearOnFinish(),
+				)
 				out = io.MultiWriter(out, bar)
 			}
 			_, err = io.Copy(out, resp.Body)

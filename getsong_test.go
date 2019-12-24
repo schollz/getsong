@@ -87,10 +87,6 @@ func TestGetMusicVideoID(t *testing.T) {
 	assert.Equal(t, "3LRu9mjiyKo", id)
 }
 
-// func TestGetRenderedPage(t *testing.T) {
-//
-// 	log.SetLevel("debug")
-// 	html, err := getRenderedPage("https://www.youtube.com/")
-// 	assert.Nil(t, err)
-// 	assert.True(t, strings.Contains(html, "recommended"))
-// }
+func TestParseDurationString(t *testing.T) {
+	assert.Equal(t, int64(470001), ParseDurationString("00:07:50.01,"))
+}
