@@ -22,6 +22,14 @@ func TestGetSongAPI(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestGetSongAPI2(t *testing.T) {
+	_, err := GetSong("hey ma", "Bon Iver", Options{
+		ShowProgress: true,
+		Debug:        true,
+	})
+	assert.Nil(t, err)
+}
+
 func TestGetPage(t *testing.T) {
 
 	log.SetLevel("debug")
@@ -40,7 +48,6 @@ func TestGetFfmpeg(t *testing.T) {
 }
 
 func TestGetYouTubeInfo(t *testing.T) {
-
 	log.SetLevel("debug")
 	info, err := getYoutubeVideoInfo("qxiOMm_x3Xg")
 	assert.Nil(t, err)

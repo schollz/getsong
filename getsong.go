@@ -45,7 +45,7 @@ type Options struct {
 	ShowProgress  bool
 	Debug         bool
 	DoNotDownload bool
-	Filename string
+	Filename      string
 }
 
 // GetSong requires passing in the options which requires at least a title.
@@ -68,9 +68,19 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 		err = fmt.Errorf("must enter title")
 		return
 	}
-
+	notids := []string{}
+	tries := 0
 	var youtubeID string
-	youtubeID, err = GetMusicVideoID(title, artist)
+
+TryAgain:
+	tries++
+	if tries > 2 {
+		return
+	}
+	if youtubeID != "" {
+		notids = append(notids, youtubeID)
+	}
+	youtubeID, err = GetMusicVideoID(title, artist, notids...)
 	if err != nil {
 		err = errors.Wrap(err, "could not get youtube ID")
 		return
@@ -88,7 +98,7 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 	}
 	savedFilename = sanitizeFileName(savedFilename)
 	if options.Filename != "" {
-		log.Debugf("changing file name from '%s' to '%s'",savedFilename, options.Filename)
+		log.Debugf("changing file name from '%s' to '%s'", savedFilename, options.Filename)
 		savedFilename = options.Filename
 	}
 
@@ -98,7 +108,7 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 		fname, err = downloadYouTube(youtubeID, savedFilename)
 		if err != nil {
 			err = errors.Wrap(err, "could not download video")
-			return
+			goto TryAgain
 		}
 
 		if OptionShowProgressBar {
@@ -278,7 +288,7 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 }
 
 // GetMusicVideoID returns the ids for a specified title and artist
-func GetMusicVideoID(title string, artist string) (id string, err error) {
+func GetMusicVideoID(title string, artist string, notid ...string) (id string, err error) {
 	searchTerm := strings.ToLower(strings.TrimSpace(title + " " + artist))
 	youtubeSearchURL := fmt.Sprintf(
 		`https://www.youtube.com/results?search_query=%s`,
@@ -320,6 +330,16 @@ func GetMusicVideoID(title string, artist string) (id string, err error) {
 				continue
 			}
 			if youtubeID == "" {
+				continue
+			}
+			doContinue := false
+			for _, badid := range notid {
+				if youtubeID == badid {
+					doContinue = true
+					break
+				}
+			}
+			if doContinue {
 				continue
 			}
 			foundIDs[youtubeID] = len(foundIDs)
