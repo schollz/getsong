@@ -22,14 +22,6 @@ func TestGetSongAPI(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestGetSongAPI2(t *testing.T) {
-	_, err := GetSong("hey ma", "Bon Iver", Options{
-		ShowProgress: true,
-		Debug:        true,
-	})
-	assert.Nil(t, err)
-}
-
 func TestGetPage(t *testing.T) {
 
 	log.SetLevel("debug")
@@ -75,6 +67,12 @@ func TestGetMusicVideoID(t *testing.T) {
 	log.Infof("old records: %s", id)
 	assert.Nil(t, err)
 	assert.True(t, "oa6KzRfvtAs" == id || "obtJEJ4VPmk" == id)
+
+	// try one with puncuation
+	id, err = GetMusicVideoID("hey, ma", "bon iver")
+	log.Infof("hey, ma: %s", id)
+	assert.Nil(t, err)
+	assert.True(t, "HDAKS18Gv1U" == id)
 
 	// skip the most popular result to get the provided to youtube version
 	id, err = GetMusicVideoID("true", "spandau ballet")

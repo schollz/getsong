@@ -359,6 +359,9 @@ func GetMusicVideoID(title string, artist string, notid ...string) (id string, e
 	jobs := make(chan Job, len(foundIDs))
 	results := make(chan Result, len(foundIDs))
 	log.Debugf("processing %d found ids", len(foundIDs))
+
+	reg, err := regexp.Compile("[^a-zA-Z0-9 ]+")
+
 	for w := 0; w < len(foundIDs); w++ {
 		go func(id int, jobs <-chan Job, results chan<- Result) {
 			for j := range jobs {
@@ -374,16 +377,21 @@ func GetMusicVideoID(title string, artist string, notid ...string) (id string, e
 				}
 
 				descCheck := " " + strings.ToLower(ytInfo.Title) + " " + strings.Join(strings.Fields(strings.ToLower(ytInfo.Description)), " ") + " "
-				log.Debug(descCheck)
-				if !strings.Contains(descCheck, " "+strings.ToLower(title)+" ") {
+				descCheck = reg.ReplaceAllString(descCheck, "")
+				titleCheck := " " + strings.ToLower(title) + " "
+				titleCheck = reg.ReplaceAllString(titleCheck, "")
+				artistCheck := " " + strings.ToLower(artist) + " "
+				artistCheck = reg.ReplaceAllString(artistCheck, "")
+				log.Debugf("ID %s: '%s' in '%s'?", j.ID, titleCheck, descCheck)
+				if !strings.Contains(descCheck, titleCheck) {
 					results <- Result{
 						Job: j,
 						Err: fmt.Errorf("no title found"),
 					}
 					continue
 				}
-				descCheck = strings.Replace(descCheck, " "+strings.ToLower(title)+" ", " ", -1)
-				if !strings.Contains(descCheck, " "+strings.ToLower(artist)+" ") {
+				descCheck = strings.Replace(descCheck, titleCheck, " ", -1)
+				if !strings.Contains(descCheck, artistCheck) {
 					results <- Result{
 						Job: j,
 						Err: fmt.Errorf("no artist found"),
@@ -414,6 +422,7 @@ func GetMusicVideoID(title string, artist string, notid ...string) (id string, e
 	possibleVideos := make([]Result, len(foundIDs))
 	for i := 0; i < len(foundIDs); i++ {
 		result := <-results
+		log.Tracef("result: %+v", result)
 		if result.Err != nil {
 			log.Debugf("trying %s got error: %s", result.Job.ID, result.Err.Error())
 		}
@@ -620,7 +629,7 @@ func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
 		`https://www.youtube.com/watch?v=%s`,
 		id,
 	)
-	log.Debugf("getting ytinfo for url: %s", youtubeSearchURL)
+	log.Tracef("getting ytinfo for url: %s", youtubeSearchURL)
 
 	html, err := getPage(youtubeSearchURL)
 	if err != nil {
