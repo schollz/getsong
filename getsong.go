@@ -45,6 +45,7 @@ type Options struct {
 	ShowProgress  bool
 	Debug         bool
 	DoNotDownload bool
+	Filename string
 }
 
 // GetSong requires passing in the options which requires at least a title.
@@ -86,6 +87,10 @@ func GetSong(title string, artist string, option ...Options) (savedFilename stri
 		savedFilename = fmt.Sprintf("%s (%s)", title, youtubeID)
 	}
 	savedFilename = sanitizeFileName(savedFilename)
+	if options.Filename != "" {
+		log.Debugf("changing file name from '%s' to '%s'",savedFilename, options.Filename)
+		savedFilename = options.Filename
+	}
 
 	if !options.DoNotDownload {
 		var fname string
