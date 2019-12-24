@@ -21,6 +21,7 @@ import (
 
 	"github.com/bogem/id3v2"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rylio/ytdl"
 	log "github.com/schollz/logger"
 	"github.com/schollz/progressbar/v2"
@@ -39,6 +40,7 @@ func init() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 }
 
 // Options allow you to set the artist, title and duration to find the right song.
@@ -134,6 +136,9 @@ TryAgain:
 // FFmpegConvertToMp3 uses ffmpeg to convert to mp3
 func ConvertToMp3(filename string) (err error) {
 	filenameWithoutExtension := strings.Replace(filename, filepath.Ext(filename), "", 1)
+	if OptionShowProgressBar {
+		fmt.Print(filenameWithoutExtension)
+	}
 	defer func() {
 		if err != nil {
 			os.Remove(filenameWithoutExtension + ".mp3")
@@ -175,7 +180,7 @@ func ConvertToMp3(filename string) (err error) {
 			bar = progressbar.NewOptions64(ParseDurationString(m),
 				progressbar.OptionSetPredictTime(true),
 				progressbar.OptionClearOnFinish(),
-				progressbar.OptionSetDescription(fmt.Sprintf(filenameWithoutExtension)),
+				progressbar.OptionSetDescription("Converting '"+fmt.Sprintf(filenameWithoutExtension)+"'"),
 			)
 		}
 		if m == "Duration:" {
@@ -252,9 +257,6 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			return "", err
 		}
 		downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
-		if OptionShowProgressBar {
-			fmt.Printf("Downloading %s...\n", filename)
-		}
 
 		err = DownloadFromYouTube(downloadedFilename, downloadURLString)
 		if err != nil && err.Error() == "no content" {
@@ -323,7 +325,7 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 			defer resp.Body.Close()
 			if it == 0 && OptionShowProgressBar {
 				bar := progressbar.NewOptions64(resp.ContentLength,
-					progressbar.OptionSetDescription(strings.Split(downloadedFilename, ".")[0]),
+					progressbar.OptionSetDescription("Downlaoding '"+strings.Split(downloadedFilename, ".")[0]+"'"),
 					progressbar.OptionSetBytes64(resp.ContentLength),
 					progressbar.OptionClearOnFinish(),
 				)
