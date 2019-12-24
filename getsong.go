@@ -137,10 +137,10 @@ func ConvertToMp3(filename string) (err error) {
 	// convert to mp3
 	cmd := exec.Command(ffmpegBinary, "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
 	_, err = cmd.CombinedOutput()
-	if err == nil {
-		os.Remove(filename)
+	if err != nil {
+		os.Remove(filenameWithoutExtension + ".mp3")
 	}
-
+	os.Remove(filename)
 	return
 }
 
