@@ -166,7 +166,9 @@ func ConvertToMp3(filename string) (err error) {
 		m := scanner.Text()
 		if bar != nil {
 			m = strings.TrimPrefix(m, "time=")
-			bar.Set64(ParseDurationString(m))
+			if ParseDurationString(m) > 0 {
+				bar.Set64(ParseDurationString(m))
+			}
 		}
 
 		if strings.TrimSpace(m) == filename+":" {
