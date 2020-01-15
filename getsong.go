@@ -231,7 +231,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			return "", err
 		}
 		bestQuality := 0
-		var format ytdl.Format
+		var format *ytdl.Format
 		for _, f := range info.Formats {
 			if f.VideoEncoding == "" {
 				if f.AudioBitrate > bestQuality {
