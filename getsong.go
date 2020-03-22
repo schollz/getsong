@@ -245,7 +245,8 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			return "", err
 		}
 		log.Debugf("trying %d time", i)
-		downloadURL, err := info.GetDownloadURL(format)
+
+		downloadURL, err := ytdl.DefaultClient.GetDownloadURL(info, format)
 		downloadURLString := downloadURL.String()
 		// temp fix for the paramter youtube wants sometimes
 		// see https://github.com/ytdl-org/youtube-dl/pull/18927
