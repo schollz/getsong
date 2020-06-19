@@ -3,6 +3,7 @@ package getsong
 import (
 	"archive/zip"
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -223,8 +224,11 @@ func ParseDurationString(s string) (milliseconds int64) {
 
 // downloadYouTube downloads a youtube video and saves using the filename. Returns the filename with the extension.
 func downloadYouTube(youtubeID string, filename string) (downloadedFilename string, err error) {
+	client := ytdl.Client{
+		HTTPClient: http.DefaultClient,
+	}
 	for i := 0; i < 5; i++ {
-		info, err := ytdl.GetVideoInfo(youtubeID)
+		info, err := client.GetVideoInfo(context.Background(), youtubeID)
 		if err != nil {
 			err = fmt.Errorf("Unable to fetch video info: %s", err.Error())
 			log.Error(err)
@@ -245,7 +249,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			return "", err
 		}
 		log.Debugf("trying %d time", i)
-		downloadURL, err := info.GetDownloadURL(format)
+		downloadURL, err := client.GetDownloadURL(context.Background(), info, format)
 		downloadURLString := downloadURL.String()
 		// temp fix for the paramter youtube wants sometimes
 		// see https://github.com/ytdl-org/youtube-dl/pull/18927
