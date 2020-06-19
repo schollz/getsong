@@ -46,9 +46,17 @@ func TestGetYouTubeInfo(t *testing.T) {
 	fmt.Printf("%+v\n", info)
 }
 
-func TestGetMusicVideoID(t *testing.T) {
+func TestOne(t *testing.T) {
+	log.SetLevel("trace")
+	id, err := GetMusicVideoID("eva", "haerts")
+	log.Infof("eva: %s", id)
+	assert.Nil(t, err)
+	assert.Equal(t, "qxiOMm_x3Xg", id)
 
-	log.SetLevel("info")
+}
+
+func TestGetMusicVideoID(t *testing.T) {
+	log.SetLevel("trace")
 
 	// this one is tricky because the band name is spelled weird and requires
 	// clicking through to force youtube to search the wrong spelling
@@ -60,7 +68,7 @@ func TestGetMusicVideoID(t *testing.T) {
 	id, err = GetMusicVideoID("movies", "Weyes Blood")
 	log.Infof("movies: %s", id)
 	assert.Nil(t, err)
-	assert.True(t, "RFtRq6t3jOo" == id)
+	assert.True(t, "RFtRq6t3jOo" == id || "xniRJsus8pk" == id)
 
 	// this one is trick because its the second result
 	id, err = GetMusicVideoID("old records", "allen toussaint")
@@ -78,7 +86,7 @@ func TestGetMusicVideoID(t *testing.T) {
 	id, err = GetMusicVideoID("true", "spandau ballet")
 	log.Infof("true: %s", id)
 	assert.Nil(t, err)
-	assert.True(t, "ITX-SEsyGRg" == id || "2H1N6KdU-L0" == id || "sWBueqYA2Es" == id)
+	assert.True(t, "ITX-SEsyGRg" == id || "2H1N6KdU-L0" == id || "sWBueqYA2Es" == id || "TVeSwMMvkP4" == id)
 
 	// pick one that is not the first
 	id, err = GetMusicVideoID("i know what love is", "don white")

@@ -427,6 +427,22 @@ func GetMusicVideoID(title string, artist string, notid ...string) (id string, e
 		}
 	}
 
+	html2 := strings.Replace(html, `"videoId":"`, `z000zy000y`, -1)
+	for _, line := range strings.Split(html2, "z000z") {
+		if !strings.HasPrefix(line, "y000y") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "y000y")
+		line = strings.Split(line, `"`)[0]
+		if len(line) > 35 {
+			continue
+		}
+		if _, ok := foundIDs[line]; ok {
+			continue
+		}
+		foundIDs[line] = len(foundIDs)
+	}
+
 	type Job struct {
 		Position int
 		ID       string
@@ -734,7 +750,14 @@ func getYoutubeVideoInfo(id string) (ytInfo YouTubeInfo, err error) {
 
 func getPage(urlToGet string) (html string, err error) {
 	var client http.Client
-	resp, err := client.Get(urlToGet)
+	req, err := http.NewRequest("GET", urlToGet, nil)
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:73.0) Gecko/20100101 Firefox/73.0")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
