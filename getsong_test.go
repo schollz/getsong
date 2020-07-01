@@ -47,12 +47,11 @@ func TestGetYouTubeInfo(t *testing.T) {
 }
 
 func TestOne(t *testing.T) {
-	log.SetLevel("trace")
-	id, err := GetMusicVideoID("eva", "haerts")
-	log.Infof("eva: %s", id)
+	_, err := GetSong("Old Records", "Allen Toussaint", Options{
+		ShowProgress: true,
+		Debug:        true,
+	})
 	assert.Nil(t, err)
-	assert.Equal(t, "qxiOMm_x3Xg", id)
-
 }
 
 func TestGetMusicVideoID(t *testing.T) {

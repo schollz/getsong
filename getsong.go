@@ -2,7 +2,6 @@ package getsong
 
 import (
 	"archive/zip"
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -115,27 +114,25 @@ TryAgain:
 			err = errors.Wrap(err, "could not download video")
 			goto TryAgain
 		}
-		err = ConvertToMp3(fname)
+		err = ConvertToM4a(fname)
 		if err != nil {
 			err = errors.Wrap(err, "could not convert video")
 			return
 		}
-		log.Debugf("setting id3 tag for %s", savedFilename+".mp3")
-		err = SetID3Tags(savedFilename+".mp3", artist, title, youtubeID)
-		if err != nil {
-			err = errors.Wrap(err, "could not set id3 tags")
-			return
-		}
+		// log.Debugf("setting id3 tag for %s", savedFilename+".mp3")
+		// err = SetID3Tags(savedFilename+".mp3", artist, title, youtubeID)
+		// if err != nil {
+		// 	err = errors.Wrap(err, "could not set id3 tags")
+		// 	return
+		// }
 	}
 
 	savedFilename += ".mp3"
 	return
 }
 
-// ConvertToMp3 uses ffmpeg to convert to mp3
-
-// FFmpegConvertToMp3 uses ffmpeg to convert to mp3
-func ConvertToMp3(filename string) (err error) {
+// ConvertToM4a uses ffmpeg to convert to m4a
+func ConvertToM4a(filename string) (err error) {
 	filenameWithoutExtension := strings.Replace(filename, filepath.Ext(filename), "", 1)
 	if OptionShowProgressBar {
 		fmt.Print(filenameWithoutExtension)
@@ -148,54 +145,57 @@ func ConvertToMp3(filename string) (err error) {
 	}()
 
 	// convert to mp3
-	cmd := exec.Command(ffmpegBinary, "-stats", "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return
-	}
+	// cmd := exec.Command(ffmpegBinary, "-stats", "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
+	// convert to m4a
+	cmd := exec.Command(ffmpegBinary, "-hide_banner", "-nostdin", "-vn", "-stats", "-i", filename, "-acodec", "copy", "-y", filenameWithoutExtension+".m4a")
+
+	// stderr, err := cmd.StderrPipe()
+	// if err != nil {
+	// 	return
+	// }
 	cmd.Start()
 
-	lastLine := ""
-	scanner := bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanWords)
-	haveError := false
-	nextIsDuration := false
+	// lastLine := ""
+	// scanner := bufio.NewScanner(stderr)
+	// scanner.Split(bufio.ScanWords)
+	// haveError := false
+	// nextIsDuration := false
 
-	var bar *progressbar.ProgressBar
+	// var bar *progressbar.ProgressBar
 
-	for scanner.Scan() {
-		m := scanner.Text()
-		if bar != nil {
-			m = strings.TrimPrefix(m, "time=")
-			if ParseDurationString(m) > 0 {
-				bar.Set64(ParseDurationString(m))
-			}
-		}
+	// for scanner.Scan() {
+	// 	m := scanner.Text()
+	// 	if bar != nil {
+	// 		m = strings.TrimPrefix(m, "time=")
+	// 		if ParseDurationString(m) > 0 {
+	// 			bar.Set64(ParseDurationString(m))
+	// 		}
+	// 	}
 
-		if strings.TrimSpace(m) == filename+":" {
-			haveError = true
-		}
-		if haveError {
-			lastLine += m + " "
-		}
-		if nextIsDuration && OptionShowProgressBar {
-			nextIsDuration = false
-			bar = progressbar.NewOptions64(ParseDurationString(m),
-				progressbar.OptionSetPredictTime(true),
-				progressbar.OptionClearOnFinish(),
-				progressbar.OptionSetDescription("Converting '"+fmt.Sprintf(filenameWithoutExtension)+"'"),
-			)
-		}
-		if m == "Duration:" {
-			nextIsDuration = true
-		}
-	}
-	bar.Finish()
+	// 	if strings.TrimSpace(m) == filename+":" {
+	// 		haveError = true
+	// 	}
+	// 	if haveError {
+	// 		lastLine += m + " "
+	// 	}
+	// 	if nextIsDuration && OptionShowProgressBar {
+	// 		nextIsDuration = false
+	// 		bar = progressbar.NewOptions64(ParseDurationString(m),
+	// 			progressbar.OptionSetPredictTime(true),
+	// 			progressbar.OptionClearOnFinish(),
+	// 			progressbar.OptionSetDescription("Converting '"+fmt.Sprintf(filenameWithoutExtension)+"'"),
+	// 		)
+	// 	}
+	// 	if m == "Duration:" {
+	// 		nextIsDuration = true
+	// 	}
+	// }
+	// bar.Finish()
 
 	err = cmd.Wait()
-	if err != nil {
-		err = fmt.Errorf("%s", strings.TrimSpace(lastLine))
-	}
+	// if err != nil {
+	// 	err = fmt.Errorf("%s", strings.TrimSpace(lastLine))
+	// }
 	return
 }
 
@@ -238,9 +238,13 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 		var format *ytdl.Format
 		for _, f := range info.Formats {
 			if f.VideoEncoding == "" {
+				log.Tracef("format: %+v", f)
 				if f.AudioBitrate > bestQuality {
 					bestQuality = f.AudioBitrate
 					format = f
+					if f.AudioEncoding == "aac" {
+						break
+					}
 				}
 			}
 		}
@@ -248,6 +252,7 @@ func downloadYouTube(youtubeID string, filename string) (downloadedFilename stri
 			err = fmt.Errorf("No audio available")
 			return "", err
 		}
+		log.Tracef("best format: %+v", format)
 		log.Debugf("trying %d time", i)
 		downloadURL, err := client.GetDownloadURL(context.Background(), info, format)
 		downloadURLString := downloadURL.String()
