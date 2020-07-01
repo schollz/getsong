@@ -5,7 +5,7 @@
 [![coverage](https://img.shields.io/badge/coverage-62%25-green.svg)](https://gocover.io/github.com/schollz/getsong)
 [![godocs](https://godoc.org/github.com/schollz/getsong?status.svg)](https://godoc.org/github.com/schollz/getsong) 
 
-This is a simple library that utilizes the [rylio/ytdl YouTube downloader](https://github.com/rylio/ytdl) and [ffmpeg](https://www.ffmpeg.org/) to get almost any mp3 of a song that you want to listen to. I wrote this so I could [download mp3s of my favorite Spotify playlists](https://github.com/schollz/spotifydownload). 
+This is a simple library that utilizes the [rylio/ytdl YouTube downloader](https://github.com/rylio/ytdl) and [ffmpeg](https://www.ffmpeg.org/) to get almost any m4a of a song that you want to listen to. I wrote this so I could [download m4as of my favorite Spotify playlists](https://github.com/schollz/spotifydownload). 
 
 
 **Disclaimer:** Downloading copyright songs may be illegal in your country. This tool is for educational purposes only and was created only to show how YouTubes's API can be used to download music. Please support the artists by buying their music.
@@ -26,8 +26,8 @@ The aim of this library to have a low (or zero) false positive rate, so it works
 $ getsong 'Getting in Tune' 'The Who'
 Downloading 'Getting in Tune by The Who (W6-3rnD7FSc).webm'...
  524289 / 524289 [==========================] 100.00% 
-...converting to mp3...
-Downloaded 'Getting in Tune by The Who (W6-3rnD7FSc).mp3'
+...converting to m4a...
+Downloaded 'Getting in Tune by The Who (W6-3rnD7FSc).m4a'
 ```
 
 ### Use as a library
