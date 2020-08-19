@@ -5,9 +5,35 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iawia002/annie/extractors/types"
+	"github.com/iawia002/annie/extractors/youtube"
 	log "github.com/schollz/logger"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUseAnnie(t *testing.T) {
+	datas, err := youtube.New().Extract("https://www.youtube.com/watch?v=qxiOMm_x3Xg", types.Options{})
+	assert.Nil(t, err)
+	biggestSize := int64(0)
+	bestURL := ""
+	exten := ""
+	for _, data := range datas {
+		fmt.Printf("%+v\n", data)
+		for _, stream := range data.Streams {
+			fmt.Printf("%+v\n", stream)
+			if strings.Contains(stream.Quality, "audio/mp4") {
+				fmt.Printf("%+v\n", stream.Parts[0])
+				if stream.Parts[0].Size > biggestSize {
+					bestURL = stream.Parts[0].URL
+					biggestSize = stream.Parts[0].Size
+					exten = stream.Parts[0].Ext
+				}
+			}
+		}
+	}
+	fmt.Println(bestURL)
+	fmt.Println(exten)
+}
 
 func TestGetSongAPI(t *testing.T) {
 	_, err := GetSong("Old Records", "Allen Toussaint", Options{

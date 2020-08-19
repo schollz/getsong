@@ -2,7 +2,6 @@ package getsong
 
 import (
 	"archive/zip"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,11 +19,12 @@ import (
 	"time"
 
 	"github.com/bogem/id3v2"
+	"github.com/iawia002/annie/extractors/types"
+	"github.com/iawia002/annie/extractors/youtube"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rylio/ytdl"
 	log "github.com/schollz/logger"
-	"github.com/schollz/progressbar/v2"
+	"github.com/schollz/progressbar/v3"
 )
 
 const CHUNK_SIZE = 524288
@@ -143,10 +143,12 @@ func ConvertToM4a(filename string) (err error) {
 		}
 		os.Remove(filename)
 	}()
+	log.Tracef("converting %s", filename)
 
 	// convert to mp3
 	// cmd := exec.Command(ffmpegBinary, "-stats", "-i", filename, "-qscale:a", "3", "-y", filenameWithoutExtension+".mp3")
 	// convert to m4a
+	log.Trace(ffmpegBinary, "-hide_banner", "-nostdin", "-vn", "-stats", "-i", filename, "-acodec", "copy", "-y", filenameWithoutExtension+".m4a")
 	cmd := exec.Command(ffmpegBinary, "-hide_banner", "-nostdin", "-vn", "-stats", "-i", filename, "-acodec", "copy", "-y", filenameWithoutExtension+".m4a")
 
 	// stderr, err := cmd.StderrPipe()
@@ -224,52 +226,39 @@ func ParseDurationString(s string) (milliseconds int64) {
 
 // downloadYouTube downloads a youtube video and saves using the filename. Returns the filename with the extension.
 func downloadYouTube(youtubeID string, filename string) (downloadedFilename string, err error) {
-	client := ytdl.Client{
-		HTTPClient: http.DefaultClient,
-	}
 	for i := 0; i < 5; i++ {
-		info, err := client.GetVideoInfo(context.Background(), youtubeID)
+		datas, err := youtube.New().Extract("https://www.youtube.com/watch?v="+youtubeID, types.Options{})
 		if err != nil {
-			err = fmt.Errorf("Unable to fetch video info: %s", err.Error())
-			log.Error(err)
-			return "", err
+			log.Trace(err)
+			continue
 		}
-		bestQuality := 0
-		var format *ytdl.Format
-		for _, f := range info.Formats {
-			if f.VideoEncoding == "" {
-				log.Tracef("format: %+v", f)
-				if f.AudioBitrate > bestQuality {
-					bestQuality = f.AudioBitrate
-					format = f
-					if f.AudioEncoding == "aac" {
-						break
+		biggestSize := int64(0)
+		downloadURL := ""
+		exten := ""
+		for _, data := range datas {
+			for _, stream := range data.Streams {
+				if strings.Contains(stream.Quality, "audio/mp4") {
+					if stream.Parts[0].Size > biggestSize {
+						downloadURL = stream.Parts[0].URL
+						biggestSize = stream.Parts[0].Size
+						exten = stream.Parts[0].Ext
 					}
 				}
 			}
 		}
-		if bestQuality == 0 {
-			err = fmt.Errorf("No audio available")
-			return "", err
+		if downloadURL == "" {
+			continue
 		}
-		log.Tracef("best format: %+v", format)
 		log.Debugf("trying %d time", i)
-		downloadURL, err := client.GetDownloadURL(context.Background(), info, format)
-		downloadURLString := downloadURL.String()
-		// temp fix for the paramter youtube wants sometimes
-		// see https://github.com/ytdl-org/youtube-dl/pull/18927
-		if i > 0 {
-			downloadURLString = strings.Replace(downloadURLString, "signature=", "sig=", -1)
-		}
 		log.Debugf("downloading %s", downloadURL)
 		if err != nil {
 			err = fmt.Errorf("Unable to get download url: %s", err.Error())
 			log.Error(err)
 			return "", err
 		}
-		downloadedFilename = fmt.Sprintf("%s.%s", filename, format.Extension)
-
-		err = DownloadFromYouTube(downloadedFilename, downloadURLString)
+		downloadedFilename = fmt.Sprintf("%s.%s", filename, exten)
+		log.Tracef("downloading to %s", downloadedFilename)
+		err = DownloadFromYouTube(downloadedFilename, downloadURL)
 		if err != nil && err.Error() == "no content" {
 		} else {
 			break
@@ -335,10 +324,8 @@ func DownloadFromYouTube(downloadedFilename string, downloadURL string) (err err
 			}
 			defer resp.Body.Close()
 			if it == 0 && OptionShowProgressBar {
-				bar := progressbar.NewOptions64(resp.ContentLength,
-					progressbar.OptionSetDescription("Downlaoding '"+strings.Split(downloadedFilename, ".")[0]+"'"),
-					progressbar.OptionSetBytes64(resp.ContentLength),
-					progressbar.OptionClearOnFinish(),
+				bar := progressbar.DefaultBytes(resp.ContentLength,
+					strings.Split(downloadedFilename, "(")[0],
 				)
 				out = io.MultiWriter(out, bar)
 			}
@@ -645,7 +632,7 @@ func getFfmpegBinary() (locationToBinary string, err error) {
 	defer resp.Body.Close()
 
 	fmt.Println("Downloading ffmpeg...")
-	bar := progressbar.NewOptions64(resp.ContentLength, progressbar.OptionSetBytes64(resp.ContentLength))
+	bar := progressbar.DefaultBytes(resp.ContentLength)
 	out = io.MultiWriter(out, bar)
 	_, err = io.Copy(out, resp.Body)
 	saveFile.Close()
